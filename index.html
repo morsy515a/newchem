@@ -16,6 +16,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>try{var nl=JSON.parse(localStorage.getItem('newchem.lock')||'{}');if(nl&&nl.enabled)document.documentElement.classList.add('locked')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap">
@@ -350,6 +351,36 @@ input[dir="ltr"]{text-align:right}
 /* when the app runs from the home screen, the form's own footer carries the bottom inset */
 @media (max-width:600px){ #form .sheet-body{padding-bottom:20px} }
 
+/* ---------- app lock ---------- */
+html.locked .app{visibility:hidden}
+html.locked body{overflow:hidden}
+.lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;overflow:auto;padding-top:calc(env(safe-area-inset-top,0px) + 20px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.lock-in{width:100%;max-width:330px;display:grid;justify-items:center;gap:8px;text-align:center}
+.lock-logo{width:84px;height:84px;border-radius:50%}
+.lock-t{margin:6px 0 0;font-family:var(--font-brand);font-size:25px;font-weight:700;color:var(--brand)}
+.lock-sub{margin:0;color:var(--muted);font-size:14.5px}
+.dots{display:flex;gap:14px;direction:ltr;min-height:18px;margin-top:10px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted)}
+.dot.on{background:var(--ink);border-color:var(--ink)}
+.dots.shake{animation:nc-shake .35s}
+@keyframes nc-shake{20%,60%{transform:translateX(-9px)}40%,80%{transform:translateX(9px)}}
+@media (prefers-reduced-motion: reduce){.dots.shake{animation:none}}
+.lock-err{min-height:1.6em;margin:0;color:var(--debt);font-size:13.5px}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px 24px;direction:ltr}
+.key{width:72px;height:72px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font:inherit;font-size:27px;font-weight:500;color:var(--ink);cursor:pointer;display:grid;place-items:center;font-variant-numeric:tabular-nums;-webkit-user-select:none;user-select:none}
+.key:active{background:var(--sunken)}
+.key.ghost{border:0;background:none}
+.key.bio{color:var(--brand);border-color:var(--brand)}
+.key svg.i{width:28px;height:28px}
+.key:disabled{opacity:.35;cursor:default}
+.lock-link{border:0;background:none;color:var(--accent);font:inherit;font-size:14px;cursor:pointer;padding:8px 10px;margin-top:4px}
+.lock-forgot{display:grid;gap:10px;padding:12px 14px;border-radius:var(--r);background:var(--debt-soft);color:var(--debt);font-size:14px;text-align:start;width:100%}
+.lock-forgot.info{background:var(--accent-soft);color:var(--ink)}
+@media (max-height:660px){.lock-logo{width:60px;height:60px}.pad{grid-template-columns:repeat(3,62px);gap:10px 20px}.key{width:62px;height:62px;font-size:24px}}
+.lk-row{display:flex;align-items:center;gap:10px;font-size:14.5px;cursor:pointer}
+.lk-row input{width:20px;height:20px;accent-color:var(--brand);flex:none}
+.m-sec select{height:42px;border:1px solid var(--line);border-radius:9px;background:var(--bg);padding-inline:10px;font:inherit;font-size:15px;color:var(--ink)}
+
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateX(-50%);z-index:60;pointer-events:none;background:var(--toast-bg);color:var(--toast-fg);padding:11px 18px;border-radius:12px;font-size:14.5px;max-width:calc(100% - 32px);text-align:center;box-shadow:var(--shadow)}
 .toast.bad{background:var(--debt);color:var(--surface)}
 </style>
@@ -369,6 +400,9 @@ input[dir="ltr"]{text-align:right}
           </div>
           <div class="top-acts">
             <button type="button" class="btn primary" id="add-btn" data-act="new">+ عميل جديد</button>
+            <button type="button" class="icon-btn" id="lock-btn" data-act="lock-now" aria-label="اقفل التطبيق" hidden>
+              <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            </button>
             <button type="button" class="icon-btn" data-act="menu" aria-label="الإعدادات والنسخة الاحتياطية">
               <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
             </button>
@@ -464,6 +498,21 @@ input[dir="ltr"]{text-align:right}
       <div class="sheet-body" id="menu-body"></div>
     </div>
   </div>
+  <!-- lock setup / change / turn off -->
+  <div class="sheet" id="lockset" hidden>
+    <div class="sheet-back" data-act="lockset-close"></div>
+    <form class="sheet-panel narrow" id="lockset-form" novalidate role="dialog" aria-modal="true" aria-labelledby="lockset-title">
+      <div class="sheet-head">
+        <h2 id="lockset-title">قفل التطبيق</h2>
+        <button type="button" class="icon-btn" data-act="lockset-close" aria-label="إغلاق">✕</button>
+      </div>
+      <div class="sheet-body" id="lockset-body"></div>
+      <div class="sheet-foot">
+        <button type="button" class="btn" data-act="lockset-close">إلغاء</button>
+        <button type="submit" class="btn primary" id="lockset-save">حفظ</button>
+      </div>
+    </form>
+  </div>
   <input type="file" id="import-file" accept=".json,.txt,application/json,text/plain" hidden>
 
   <datalist id="dl-prods"></datalist>
@@ -475,10 +524,30 @@ input[dir="ltr"]{text-align:right}
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 </div>
 
+<div class="lock" id="lock" hidden role="dialog" aria-modal="true" aria-labelledby="lock-t">
+  <div class="lock-in">
+    <img class="lock-logo" src="logo-mark.png" alt="" width="84" height="84">
+    <h2 class="lock-t" id="lock-t">نيوكيم مقفول</h2>
+    <p class="lock-sub" id="lock-sub">اكتب الرقم السري</p>
+    <div class="dots" id="lock-dots" aria-hidden="true"></div>
+    <p class="lock-err" id="lock-err" role="alert"></p>
+    <div class="pad" id="pad" role="group" aria-label="لوحة الأرقام">
+      <button type="button" class="key" data-k="1">1</button><button type="button" class="key" data-k="2">2</button><button type="button" class="key" data-k="3">3</button>
+      <button type="button" class="key" data-k="4">4</button><button type="button" class="key" data-k="5">5</button><button type="button" class="key" data-k="6">6</button>
+      <button type="button" class="key" data-k="7">7</button><button type="button" class="key" data-k="8">8</button><button type="button" class="key" data-k="9">9</button>
+      <button type="button" class="key bio" data-k="bio" id="key-bio" aria-label="افتح بالبصمة أو وش الموبايل"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></button>
+      <button type="button" class="key" data-k="0">0</button>
+      <button type="button" class="key ghost" data-k="del" aria-label="امسح رقم"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 5H9l-7 7 7 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m16 9-6 6M10 9l6 6"/></svg></button>
+    </div>
+    <button type="button" class="lock-link" data-k="forgot">نسيت الرقم السري؟</button>
+    <div id="lock-forgot" hidden></div>
+  </div>
+</div>
+
 <script>
 (function(){
 'use strict';
-var APP_VERSION='1.2';
+var APP_VERSION='1.3';
 var $ = function(s){ return document.querySelector(s); };
 var app = $('#app');
 var root = document.documentElement;
@@ -568,7 +637,7 @@ function daysAgo(t){ return Math.floor((Date.now()-t)/86400000); }
 function agoTxt(t){ var d=daysAgo(t); if(d<=0) return 'النهارده'; if(d===1) return 'امبارح'; if(d===2) return 'من يومين'; if(d<=10) return 'من '+d+' أيام'; return 'من '+d+' يوم'; }
 function syncLock(){
   root.classList.toggle('lock-d', app.classList.contains('detail-open'));
-  root.classList.toggle('lock-s', !$('#sheet').hidden || !$('#menu').hidden);
+  root.classList.toggle('lock-s', !$('#sheet').hidden || !$('#menu').hidden || !$('#lockset').hidden);
 }
 function setOpen(v){ app.classList.toggle('detail-open', !!v); syncLock(); }
 
@@ -873,7 +942,7 @@ function renderMenu(){
       '<span>«دمج» يضيف عملاء النسخة ويحدّث اللي موجود منهم. «استبدال» يمسح اللي على الجهاز ويحط النسخة مكانه.</span>'+
       '<div class="confirm-btns"><button type="button" class="btn primary" data-act="import-merge">دمج</button><button type="button" class="btn danger" data-act="import-replace">استبدال الكل</button><button type="button" class="btn" data-act="import-cancel">إلغاء</button></div></div>';
   }
-  h+='</section><section class="m-sec"><h3>تنزيل التطبيق على الموبايل</h3>';
+  h+='</section>'+lockMenuHTML()+'<section class="m-sec"><h3>تنزيل التطبيق على الموبايل</h3>';
   if(isStandalone()) h+='<p class="m-ok">التطبيق متنزّل على جهازك وشغال من الشاشة الرئيسية.</p>';
   else {
     if(installEvt) h+='<div class="btns"><button type="button" class="btn primary" data-act="install">تثبيت نيوكيم على الجهاز</button></div>';
@@ -1124,6 +1193,16 @@ document.addEventListener('click',function(ev){
   else if(act==='here-form'){ formHere(); }
   else if(act==='loc-clear'){ formLoc=null; renderFormLoc(); }
   else if(act==='reload'){ location.reload(); }
+  else if(act==='lock-setup'){ openLockset('setup'); }
+  else if(act==='lock-change'){ openLockset('change'); }
+  else if(act==='lock-off'){ openLockset('off'); }
+  else if(act==='lockset-close'){ closeLockset(); }
+  else if(act==='lock-now'){ if(!$('#menu').hidden) closeMenu(); lockNow(); }
+  else if(act==='bio-on'){
+    registerBio().then(function(){ if(lockSave()){ renderMenu(); toast('اتفعّل الفتح '+bioWith()); } },
+      function(e){ toast(e&&e.name==='NotAllowedError'?'اتلغى تفعيل '+bioLabel():bioLabel()+' مش متاحة على الجهاز ده.',true); });
+  }
+  else if(act==='bio-off'){ delete lockCfg.cred; if(lockSave()){ renderMenu(); toast('اتوقّف الفتح '+bioWith()); } }
   else if(act==='hide-install'){ try{ localStorage.setItem('newchem.installHidden','1'); }catch(e){} renderBanners(); }
   else if(act==='add-prod'){ readProdRows(); prodRows.push({name:'',price:'',unit:''}); renderProdRows(); var n=$('#pn-'+(prodRows.length-1)); if(n) n.focus(); }
   else if(act==='rm-prod'){ readProdRows(); prodRows.splice(+el.dataset.i,1); if(!prodRows.length) prodRows.push({name:'',price:'',unit:''}); renderProdRows(); }
@@ -1153,7 +1232,14 @@ $('#q').addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDe
 $('#seg').addEventListener('click',function(e){ var b=e.target.closest('button[data-field]'); if(!b) return; S.field=b.dataset.field; syncControls(); var rows=renderList(); renderStats(rows); renderDetail(false); });
 $('#sort').addEventListener('change',function(e){ S.sort=e.target.value; renderList(); });
 document.addEventListener('keydown',function(e){
+  if(locked){
+    var lk=latin(e.key||'');
+    if(/^[0-9]$/.test(lk)){ e.preventDefault(); keyIn(lk); }
+    else if(e.key==='Backspace'){ e.preventDefault(); keyIn('del'); }
+    return;
+  }
   if(e.key==='Escape'){
+    if(!$('#lockset').hidden){ closeLockset(); return; }
     if(!$('#sheet').hidden){ closeForm(); return; }
     if(!$('#menu').hidden){ closeMenu(); return; }
     if(S.confirmDel){ S.confirmDel=null; renderDetail(true); return; }
@@ -1169,9 +1255,227 @@ document.addEventListener('keydown',function(e){
   if(window.ResizeObserver){ new ResizeObserver(setH).observe(hdr); } else window.addEventListener('resize',setH);
 })();
 
+/* ---------- app lock: PIN + device biometrics (WebAuthn platform authenticator) ---------- */
+var LOCKKEY='newchem.lock', lockCfg={}, locked=false, entry='', hiddenAt=0, bioAvail=false, bioBusy=false, checking=false, lockMode=null, autoBioTried=false, lockTick=null;
+var canLock=!!(window.crypto && crypto.subtle && window.isSecureContext && window.TextEncoder);
+function bioLabel(){ return isIOS ? 'Face ID أو البصمة' : 'البصمة'; }
+function bioWith(){ return isIOS ? 'بـ Face ID أو البصمة' : 'بالبصمة'; }
+function bioAnd(){ return isIOS ? 'و Face ID' : 'والبصمة'; }
+function lockLoad(){ try{ lockCfg=JSON.parse(localStorage.getItem(LOCKKEY)||'{}')||{}; }catch(e){ lockCfg={}; } }
+function lockSave(){ try{ localStorage.setItem(LOCKKEY,JSON.stringify(lockCfg)); return true; }catch(e){ toast('مقدرتش أحفظ إعدادات القفل.',true); return false; } }
+function b64(buf){ var u=new Uint8Array(buf), s=''; for(var i=0;i<u.length;i++) s+=String.fromCharCode(u[i]); return btoa(s); }
+function unb64(s){ var b=atob(s), u=new Uint8Array(b.length); for(var i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u; }
+function rnd(n){ return crypto.getRandomValues(new Uint8Array(n)); }
+function cleanPin(v){ return latin(v).replace(/\D/g,''); }
+function pinHash(pin,salt,iter){
+  return crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits'])
+    .then(function(k){ return crypto.subtle.deriveBits({name:'PBKDF2',salt:salt,iterations:iter,hash:'SHA-256'}, k, 256); })
+    .then(b64);
+}
+try{
+  if(window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable){
+    PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(function(v){ bioAvail=!!v; if(!$('#menu').hidden) renderMenu(); },function(){});
+  }
+}catch(e){}
+
+function syncLockUI(){ $('#lock-btn').hidden=!lockCfg.enabled; if(!$('#menu').hidden) renderMenu(); }
+function lockNow(){
+  if(!lockCfg.enabled || !canLock || locked) return;
+  locked=true; entry=''; autoBioTried=false; checking=false;
+  root.classList.add('locked'); try{ app.inert=true; }catch(e){}
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  $('#lock-forgot').hidden=true; $('#lock-forgot').innerHTML='';
+  $('#lock').hidden=false; renderLock('');
+}
+function unlock(){
+  locked=false; entry=''; hiddenAt=0;
+  if(lockCfg.enabled){ lockCfg.fails=0; lockCfg.until=0; lockSave(); }
+  root.classList.remove('locked'); try{ app.inert=false; }catch(e){}
+  $('#lock').hidden=true; $('#lock-forgot').hidden=true;
+}
+function renderLock(msg){
+  var n=lockCfg.len||4, h='';
+  for(var i=0;i<n;i++) h+='<span class="dot'+(i<entry.length?' on':'')+'"></span>';
+  $('#lock-dots').innerHTML=h;
+  $('#key-bio').style.visibility=lockCfg.cred?'visible':'hidden';
+  $('#lock-sub').textContent=lockCfg.cred?'اكتب الرقم السري أو افتح '+bioWith():'اكتب الرقم السري';
+  var wait=Math.ceil(((lockCfg.until||0)-Date.now())/1000);
+  [].forEach.call(document.querySelectorAll('#pad .key'),function(k){ if(k.dataset.k!=='bio') k.disabled=wait>0; });
+  clearTimeout(lockTick);
+  if(wait>0){ $('#lock-err').textContent='محاولات غلط كتير. استنى '+wait+' ثانية وجرّب تاني.'; lockTick=setTimeout(function(){ if(locked) renderLock(''); },1000); }
+  else $('#lock-err').textContent=msg||'';
+}
+function keyIn(k){
+  if(!locked || checking || (lockCfg.until||0)>Date.now()) return;
+  if(k==='del'){ entry=entry.slice(0,-1); renderLock(''); return; }
+  if(!/^[0-9]$/.test(k)) return;
+  var n=lockCfg.len||4; if(entry.length>=n) return;
+  entry+=k; renderLock('');
+  if(entry.length<n) return;
+  checking=true;
+  pinHash(entry, unb64(lockCfg.salt), lockCfg.iter||150000).then(function(h){
+    checking=false;
+    if(h===lockCfg.hash){ unlock(); return; }
+    lockCfg.fails=(lockCfg.fails||0)+1;
+    if(lockCfg.fails>=5) lockCfg.until=Date.now()+Math.min(30000*Math.pow(2,lockCfg.fails-5),480000);
+    lockSave(); entry='';
+    var d=$('#lock-dots'); d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake');
+    var rem=5-lockCfg.fails;
+    renderLock(rem<=0?'':'الرقم السري غلط'+(rem<=2?' · فاضل '+(rem===1?'محاولة واحدة':rem+' محاولات')+' قبل الانتظار':''));
+  },function(){ checking=false; entry=''; renderLock('حصلت مشكلة. جرّب تاني.'); });
+}
+function bioUnlock(auto){
+  if(!locked || bioBusy || !lockCfg.cred) return;
+  if(!window.PublicKeyCredential || !navigator.credentials){ if(!auto) renderLock('الجهاز ده مش بيدعم '+bioLabel()+'. اكتب الرقم السري.'); return; }
+  bioBusy=true;
+  navigator.credentials.get({publicKey:{challenge:rnd(32), allowCredentials:[{type:'public-key', id:unb64(lockCfg.cred), transports:['internal']}], userVerification:'required', timeout:60000}})
+    .then(function(a){
+      bioBusy=false;
+      var ad=new Uint8Array(a.response.authenticatorData);
+      if(ad.length>32 && (ad[32]&4)) unlock();
+      else renderLock('ماقدرناش نتأكد منك. اكتب الرقم السري.');
+    },function(e){
+      bioBusy=false; if(auto) return;
+      renderLock(e&&e.name==='NotAllowedError'?'اتلغى الفتح '+bioWith()+'. جرّب تاني أو اكتب الرقم السري.':bioLabel()+' مش متاحة دلوقتي. اكتب الرقم السري.');
+    });
+}
+function maybeAutoBio(){
+  if(locked && lockCfg.cred && !isIOS && !autoBioTried && document.visibilityState==='visible'){ autoBioTried=true; setTimeout(function(){ bioUnlock(true); },350); }
+}
+function showForgot(step){
+  var el=$('#lock-forgot'); el.hidden=false;
+  if(lockCfg.cred && !step){
+    el.className='lock-forgot info';
+    el.innerHTML='<span>افتح '+bioWith()+'، وبعدها غيّر الرقم السري من القائمة ☰.</span><div class="confirm-btns"><button type="button" class="btn primary" data-k="bio">افتح '+bioWith()+'</button><button type="button" class="btn" data-k="wipe">مش قادر أفتح خالص</button></div>';
+    return;
+  }
+  el.className='lock-forgot';
+  if(step==='wipe2'){
+    el.innerHTML='<span>متأكد؟ كل العملاء اللي على الموبايل ده هيتمسحوا، ومش هترجعهم غير من نسخة احتياطية.</span><div class="confirm-btns"><button type="button" class="btn danger" data-k="wipe-yes">أيوه، امسح وابدأ من جديد</button><button type="button" class="btn" data-k="forgot-close">تراجع</button></div>';
+    return;
+  }
+  el.innerHTML='<span>مفيش طريقة نرجّع بيها الرقم السري، لأن بياناتك متحفظة على الموبايل بس. الحل إنك تمسح بيانات نيوكيم من الجهاز ده وتبدأ من جديد، وبعدها ترجّع عملاءك من آخر نسخة احتياطية.</span><div class="confirm-btns"><button type="button" class="btn danger" data-k="wipe2">امسح البيانات</button><button type="button" class="btn" data-k="forgot-close">تراجع</button></div>';
+}
+function wipeAll(){
+  unlock();
+  lockCfg={}; try{ localStorage.removeItem(LOCKKEY); }catch(e){}
+  store={customers:{},meta:{seeded:true}}; save();
+  S.sel=null; setOpen(false); refresh(); syncLockUI();
+  toast('اتمسحت بيانات نيوكيم. رجّع عملاءك من «استرجع من نسخة» في القائمة ☰.');
+}
+function lockMenuHTML(){
+  var h='<section class="m-sec"><h3>قفل التطبيق</h3>';
+  if(!canLock) return h+'<p>المتصفح ده مش بيدعم القفل. افتح نيوكيم من اللينك في Chrome أو Safari.</p></section>';
+  if(!lockCfg.enabled){
+    return h+'<p>خلي نيوكيم مايتفتحش غير برقم سري تختاره'+(bioAvail?'، أو '+bioWith():'')+'. كده لو حد مسك موبايلك مش هيشوف عملاءك.</p><div class="btns"><button type="button" class="btn primary" data-act="lock-setup">شغّل القفل</button></div></section>';
+  }
+  var after=lockCfg.after==null?60:lockCfg.after;
+  h+='<p class="m-ok">القفل شغال: رقم سري من '+(lockCfg.len||4)+' أرقام'+(lockCfg.cred?' '+bioAnd():'')+'.</p>'+
+     '<label class="f"><span>يقفل لوحده لما تخرج من التطبيق</span><select id="lock-after">'+
+       '<option value="0"'+(after===0?' selected':'')+'>فوراً</option><option value="60"'+(after===60?' selected':'')+'>بعد دقيقة</option><option value="300"'+(after===300?' selected':'')+'>بعد 5 دقايق</option></select></label>'+
+     '<div class="btns"><button type="button" class="btn" data-act="lock-now">اقفل دلوقتي</button><button type="button" class="btn" data-act="lock-change">غيّر الرقم السري</button></div>';
+  if(lockCfg.cred) h+='<div class="btns"><button type="button" class="btn" data-act="bio-off">وقّف الفتح '+bioWith()+'</button></div>';
+  else if(bioAvail) h+='<div class="btns"><button type="button" class="btn" data-act="bio-on">افتح '+bioWith()+' كمان</button></div>';
+  return h+'<div class="btns"><button type="button" class="btn danger-ghost" data-act="lock-off">وقّف القفل</button></div></section>';
+}
+function registerBio(){
+  return navigator.credentials.create({publicKey:{
+    challenge:rnd(32), rp:{name:'نيوكيم'}, user:{id:rnd(16), name:'نيوكيم', displayName:'نيوكيم'},
+    pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+    authenticatorSelection:{authenticatorAttachment:'platform', userVerification:'required', residentKey:'discouraged'},
+    timeout:60000, attestation:'none'
+  }}).then(function(c){ lockCfg.cred=b64(c.rawId); return 'ok'; });
+}
+function openLockset(mode){
+  lockMode=mode; lastFocus=document.activeElement;
+  $('#lockset-title').textContent={setup:'تشغيل القفل',change:'تغيير الرقم السري',off:'إيقاف القفل'}[mode];
+  function pinIn(id,label,ac){ return '<label class="f"><span>'+label+'</span><input id="'+id+'" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" dir="ltr" autocomplete="'+ac+'"></label>'; }
+  var h='';
+  if(mode!=='setup') h+=pinIn('ls-cur','الرقم السري الحالي','current-password');
+  if(mode!=='off') h+=pinIn('ls-new','الرقم السري الجديد (من 4 لـ 6 أرقام)','new-password')+pinIn('ls-new2','اكتبه تاني للتأكيد','new-password');
+  if(mode==='setup'){
+    if(bioAvail) h+='<label class="lk-row"><input type="checkbox" id="ls-bio" checked><span>افتح كمان '+bioWith()+'</span></label>';
+    h+='<p class="muted">اختار رقم سهل عليك وصعب على غيرك. لو نسيته'+(bioAvail?' ومعرفتش تفتح '+bioWith():'')+'، هتضطر تمسح بيانات التطبيق وترجّعها من نسخة احتياطية، فخد نسخة احتياطية دلوقتي لو لسه ماخدتش.</p>';
+  }
+  if(mode==='off') h+='<p class="muted">بعد ما توقّف القفل، نيوكيم هيتفتح على طول من غير رقم سري.</p>';
+  h+='<p class="f-err" id="ls-err" hidden></p>';
+  $('#lockset-body').innerHTML=h;
+  var sv=$('#lockset-save'); sv.textContent={setup:'شغّل القفل',change:'احفظ الرقم الجديد',off:'وقّف القفل'}[mode]; sv.className=mode==='off'?'btn danger':'btn primary'; sv.disabled=false;
+  $('#lockset').hidden=false; syncLock();
+  if(!touch) setTimeout(function(){ var f=$('#lockset-body input'); if(f) f.focus(); },30);
+}
+function closeLockset(){ $('#lockset').hidden=true; lockMode=null; syncLock(); if(!$('#menu').hidden) renderMenu(); }
+function lsErr(m,id){ var e=$('#ls-err'); e.textContent=m; e.hidden=false; if(id&&$('#'+id)) $('#'+id).focus(); }
+function newPinOk(){
+  var a=cleanPin($('#ls-new').value), b=cleanPin($('#ls-new2').value);
+  if(a.length<4||a.length>6){ lsErr('الرقم السري لازم يكون من 4 لـ 6 أرقام.','ls-new'); return null; }
+  if(a!==b){ lsErr('الرقمين مش زي بعض. اكتبهم تاني.','ls-new2'); return null; }
+  return a;
+}
+function setPin(pin){
+  var salt=rnd(16), iter=150000;
+  return pinHash(pin,salt,iter).then(function(h){ lockCfg.salt=b64(salt); lockCfg.iter=iter; lockCfg.hash=h; lockCfg.len=pin.length; });
+}
+$('#lockset-form').addEventListener('submit',function(ev){
+  ev.preventDefault();
+  var btn=$('#lockset-save'); if(btn.disabled) return; $('#ls-err').hidden=true;
+  if(lockMode==='setup'){
+    var pin=newPinOk(); if(!pin) return;
+    var wantBio=!!($('#ls-bio') && $('#ls-bio').checked);
+    btn.disabled=true;
+    // start the fingerprint prompt straight from the tap; iPhones refuse it after a delay
+    var bioP=wantBio?registerBio().catch(function(e){ return (e&&e.name)||'err'; }):Promise.resolve('none');
+    Promise.all([setPin(pin),bioP]).then(function(r){
+      btn.disabled=false;
+      lockCfg.enabled=true; if(lockCfg.after==null) lockCfg.after=60; lockCfg.fails=0; lockCfg.until=0;
+      if(r[1]!=='ok') delete lockCfg.cred;
+      if(!lockSave()) return;
+      closeLockset(); syncLockUI();
+      toast(r[1]==='ok'?'القفل اشتغل بالرقم السري '+bioAnd():r[1]==='none'?'القفل اشتغل بالرقم السري':'القفل اشتغل بالرقم السري بس. '+bioLabel()+' ماتفعّلتش، وتقدر تجرّبها تاني من القائمة.');
+    },function(){ btn.disabled=false; lsErr('حصلت مشكلة. جرّب تاني.'); });
+    return;
+  }
+  var cur=cleanPin($('#ls-cur').value);
+  if(!cur){ lsErr('اكتب الرقم السري الحالي.','ls-cur'); return; }
+  var pin2=null;
+  if(lockMode==='change'){ pin2=newPinOk(); if(!pin2) return; }
+  btn.disabled=true;
+  pinHash(cur, unb64(lockCfg.salt), lockCfg.iter||150000).then(function(h){
+    if(h!==lockCfg.hash){ btn.disabled=false; lsErr('الرقم السري الحالي غلط.','ls-cur'); return; }
+    if(lockMode==='off'){ lockCfg={after:lockCfg.after}; lockSave(); btn.disabled=false; closeLockset(); syncLockUI(); toast('القفل اتوقّف'); return; }
+    return setPin(pin2).then(function(){ btn.disabled=false; if(lockSave()){ closeLockset(); toast('اتغيّر الرقم السري'); } });
+  }).catch(function(){ btn.disabled=false; lsErr('حصلت مشكلة. جرّب تاني.'); });
+});
+$('#lock').addEventListener('click',function(e){
+  var b=e.target.closest('[data-k]'); if(!b||b.disabled) return;
+  var k=b.dataset.k;
+  if(k==='bio') bioUnlock(false);
+  else if(k==='forgot') showForgot();
+  else if(k==='wipe') showForgot('wipe');
+  else if(k==='wipe2') showForgot('wipe2');
+  else if(k==='wipe-yes') wipeAll();
+  else if(k==='forgot-close') $('#lock-forgot').hidden=true;
+  else keyIn(k);
+});
+document.addEventListener('change',function(e){
+  if(e.target && e.target.id==='lock-after'){ lockCfg.after=+e.target.value; if(lockSave()) toast('اتحفظ'); }
+});
+document.addEventListener('visibilitychange',function(){
+  if(!lockCfg.enabled) return;
+  if(document.visibilityState==='hidden'){ hiddenAt=Date.now(); if(!(lockCfg.after>0)) lockNow(); }
+  else {
+    if(!locked && hiddenAt && Date.now()-hiddenAt>=(lockCfg.after||0)*1000) lockNow();
+    maybeAutoBio();
+  }
+});
+window.addEventListener('pageshow',function(e){ if(e.persisted && lockCfg.enabled){ lockNow(); maybeAutoBio(); } });
+
 /* ---------- start ---------- */
 load();
 if(!store.meta.seeded){ seedExamples(); store.meta.seeded=true; store.meta.firstRun=Date.now(); save(); }
+lockLoad();
+if(lockCfg.enabled && canLock){ lockNow(); maybeAutoBio(); } else root.classList.remove('locked');
+syncLockUI();
 refresh();
 if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
   var hadCtrl=!!navigator.serviceWorker.controller;

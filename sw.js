@@ -1,5 +1,5 @@
 /* نيوكيم — offline support. Serves the app from the device first, refreshes it in the background. */
-var VERSION = 'newchem-v4';
+var VERSION = 'newchem-v5';
 var SHELL = [
   './',
   './manifest.webmanifest',
