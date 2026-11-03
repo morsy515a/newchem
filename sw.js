@@ -1,5 +1,5 @@
 /* نيوكيم — offline support. Serves the app from the device first, refreshes it in the background. */
-var VERSION = 'newchem-v5';
+var VERSION = 'newchem-v6';
 var SHELL = [
   './',
   './manifest.webmanifest',
@@ -7,7 +7,16 @@ var SHELL = [
   './icon-512.png',
   './icon-maskable-512.png',
   './apple-touch-icon.png',
-  './logo-mark.png'
+  './logo-mark.png',
+  './items/agriva-10-52-10.jpg',
+  './items/agriva-21-21-21.jpg',
+  './items/agriva-6-6-43.jpg',
+  './items/agriva-cal.jpg',
+  './items/agriva-hume.jpg',
+  './items/agriva-mix.jpg',
+  './items/crystalo-10-50-10.jpg',
+  './items/crystalo-5-5-46.jpg',
+  './items/power-cyto.jpg'
 ];
 var FONT_CSS = 'https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap';
 
