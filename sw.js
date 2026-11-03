@@ -1,12 +1,13 @@
 /* نيوكيم — offline support. Serves the app from the device first, refreshes it in the background. */
-var VERSION = 'newchem-v2';
+var VERSION = 'newchem-v3';
 var SHELL = [
   './',
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png',
   './icon-maskable-512.png',
-  './apple-touch-icon.png'
+  './apple-touch-icon.png',
+  './logo-mark.png'
 ];
 var FONT_CSS = 'https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap';
 

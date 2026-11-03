@@ -11,8 +11,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="format-detection" content="telephone=no">
-<meta name="theme-color" content="#EDF2F3" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0B171B" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#EFF3F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1A17" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -21,16 +21,21 @@
 <link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap">
 <style>
 /* Layout: phone-first customer ledger. Sticky search bar, list with one-tap call/WhatsApp, customer sheet that slides over on phones (side pane on wide screens), thumb-reach add button. Data lives on the device. */
+/* Palette from the New Chem logo: brand = the C's deep green (act / save / identity), accent = the N's blue (go / info), ink = the navy ring. */
 :root{
-  --bg:#EDF2F3;
+  --bg:#EFF3F1;
   --surface:#FFFFFF;
-  --sunken:#E3EBED;
-  --ink:#0E2930;
-  --muted:#56707A;
-  --line:#D2DDE0;
-  --accent:#1A6BAD;
+  --sunken:#E4EBE8;
+  --ink:#16242E;
+  --muted:#596A72;
+  --line:#D4DEDB;
+  --brand:#1A7A3C;
+  --brand-ink:#FFFFFF;
+  --brand-soft:#E1F0D9;
+  --brand-mid:#7FBE3C;
+  --accent:#155DAA;
   --accent-ink:#FFFFFF;
-  --accent-soft:#DCEAF6;
+  --accent-soft:#DCE9F6;
   --debt:#B0382C;
   --debt-soft:#F8E5E2;
   --clear:#1E774A;
@@ -39,7 +44,7 @@
   --ex-soft:#F5EDD3;
   --scrim:rgba(6,22,28,.5);
   --shadow:0 6px 20px rgba(14,41,48,.22);
-  --toast-bg:#0E2930;
+  --toast-bg:#16242E;
   --toast-fg:#F2F7F8;
   --font-ui:"Readex Pro","SF Arabic","Geeza Pro","Noto Sans Arabic","Segoe UI",Tahoma,system-ui,sans-serif;
   --font-brand:"Reem Kufi","Readex Pro","SF Arabic","Geeza Pro","Noto Kufi Arabic",Tahoma,sans-serif;
@@ -48,11 +53,12 @@
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --bg:#0B171B; --surface:#12232A; --sunken:#183039; --ink:#E3EDF0; --muted:#8CA3AB; --line:#21373F;
-    --accent:#5FAAE6; --accent-ink:#071A26; --accent-soft:#163650;
+    --bg:#0E1A17; --surface:#15241F; --sunken:#1B2E28; --ink:#E4EEEA; --muted:#8FA59C; --line:#253A32;
+    --brand:#7CC46A; --brand-ink:#0B1A10; --brand-soft:#1D3A24; --brand-mid:#9BD45E;
+    --accent:#6AB0EA; --accent-ink:#071A26; --accent-soft:#173A57;
     --debt:#F0806F; --debt-soft:#3A1D1A; --clear:#5CC48C; --clear-soft:#12321F;
     --ex:#E2C46A; --ex-soft:#34290D; --scrim:rgba(0,0,0,.6); --shadow:0 6px 20px rgba(0,0,0,.5);
-    --toast-bg:#E3EDF0; --toast-fg:#0B171B;
+    --toast-bg:#E4EEEA; --toast-fg:#0E1A17;
     color-scheme:dark;
   }
 }
@@ -80,10 +86,10 @@ svg.i{width:20px;height:20px;flex:none}
 .topbar-inner > *,.layout > *,.d-card > *,.sheet-body > *{min-width:0}
 .brand-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
-.brand svg{width:36px;height:36px;flex:none}
-.brand-name{font-family:var(--font-brand);font-size:27px;font-weight:700;line-height:1;margin:0}
+.brand-logo{width:42px;height:42px;flex:none;display:block;border-radius:50%}
+.brand-name{font-family:var(--font-brand);font-size:27px;font-weight:700;line-height:1;margin:0;color:var(--brand)}
 .brand-sub{font-size:12.5px;color:var(--muted);margin-top:5px;display:flex;gap:8px;align-items:baseline}
-.brand-sub .latin{font-size:10px;letter-spacing:.16em;text-transform:uppercase}
+.brand-sub .latin{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--brand);font-weight:600}
 .top-acts{display:flex;gap:8px;align-items:center}
 .search{position:relative}
 .search svg{position:absolute;inset-inline-start:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--muted);pointer-events:none}
@@ -100,8 +106,8 @@ svg.i{width:20px;height:20px;flex:none}
 /* ---------- buttons ---------- */
 .btn{height:42px;padding-inline:16px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;text-decoration:none;color:var(--ink)}
 .btn:hover,.btn:active{background:var(--sunken)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.btn.primary:hover,.btn.primary:active{background:var(--accent);filter:brightness(1.07)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.primary:hover,.btn.primary:active{background:var(--brand);filter:brightness(1.07)}
 .btn.danger{background:var(--debt);border-color:var(--debt);color:var(--surface)}
 .btn.danger-ghost{color:var(--debt)}
 .btn:disabled{opacity:.55;cursor:default}
@@ -143,7 +149,7 @@ svg.i{width:20px;height:20px;flex:none}
 .row{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:0}
 .row:hover,.row:active{background:var(--sunken)}
-.row.sel{background:var(--accent-soft)}
+.row.sel{background:var(--brand-soft)}
 .row-open{display:grid;gap:3px;min-width:0;padding:0;margin:0;border:0;background:none;text-align:start;cursor:pointer}
 .row-open::after{content:"";position:absolute;inset:0}
 .row-open:focus-visible{outline:none}
@@ -154,8 +160,8 @@ svg.i{width:20px;height:20px;flex:none}
 .qbtn.wa{color:var(--clear)}
 .qbtn:active{background:var(--sunken)}
 .qbtn svg.i{width:18px;height:18px}
-.hex{width:40px;height:46px;display:grid;place-items:center;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:var(--accent-soft);color:var(--accent);font-family:var(--font-brand);font-weight:700;font-size:18px;flex:none}
-.row.sel .hex{background:var(--accent);color:var(--accent-ink)}
+.hex{width:40px;height:46px;display:grid;place-items:center;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:var(--brand-soft);color:var(--brand);font-family:var(--font-brand);font-weight:700;font-size:18px;flex:none}
+.row.sel .hex{background:var(--brand);color:var(--brand-ink)}
 .hex.lg{width:54px;height:62px;font-size:24px}
 .row-name{font-weight:600;font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row-sub{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:0 6px}
@@ -175,7 +181,7 @@ svg.i{width:20px;height:20px;flex:none}
 
 /* ---------- customer sheet ---------- */
 .detail-empty{border:1px dashed var(--line);border-radius:12px;padding:40px 24px;text-align:center;color:var(--muted);display:grid;justify-items:center;gap:10px}
-.detail-empty svg{width:56px;height:56px;color:var(--line)}
+.detail-empty img{width:76px;height:76px;opacity:.4;filter:grayscale(1)}
 .d-top,.d-bar{display:none}
 .d-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:22px}
 .d-head{display:grid;gap:14px}
@@ -254,7 +260,7 @@ svg.i{width:20px;height:20px;flex:none}
 @media (max-width:919.98px){
   html.lock-d body{overflow:hidden}
   #add-btn{display:none}
-  .fab{display:inline-flex;align-items:center;gap:8px;position:fixed;z-index:30;left:calc(env(safe-area-inset-left,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);height:56px;padding-inline:22px;border-radius:28px;border:0;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:16px;box-shadow:var(--shadow);cursor:pointer}
+  .fab{display:inline-flex;align-items:center;gap:8px;position:fixed;z-index:30;left:calc(env(safe-area-inset-left,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);height:56px;padding-inline:22px;border-radius:28px;border:0;background:var(--brand);color:var(--brand-ink);font-weight:600;font-size:16px;box-shadow:var(--shadow);cursor:pointer}
   .fab:active{filter:brightness(1.08)}
   .layout{padding-block:12px 112px}
   .detail-pane{display:none}
@@ -274,17 +280,23 @@ svg.i{width:20px;height:20px;flex:none}
 }
 @media (max-width:600px){
   .topbar-inner{padding-block:10px;gap:10px}
-  .brand svg{width:30px;height:30px}
+  .brand-logo{width:36px;height:36px}
   .brand-name{font-size:23px}
   .brand-sub{margin-top:3px}
   .tools{flex-wrap:nowrap}
   .seg{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-width:0;flex:1 1 auto}
   .seg::-webkit-scrollbar{display:none}
+  .seg{gap:4px}
+  .seg button{padding-inline:10px;font-size:13.5px}
+  .sort select{max-width:108px}
   .sort-l{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .row{padding:12px;gap:10px}
   .hex{width:38px;height:44px;font-size:17px}
   .pay-in{grid-template-columns:minmax(0,1fr)}
   .d-amt{font-size:36px}
+}
+@media (max-width:380px){
+  .seg button{padding-inline:8px}
 }
 
 /* ---------- sheets (form + menu) ---------- */
@@ -349,10 +361,7 @@ input[dir="ltr"]{text-align:right}
       <div class="wrap topbar-inner">
         <div class="brand-row">
           <div class="brand">
-            <svg viewBox="0 0 40 40" aria-hidden="true">
-              <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round"/>
-              <circle cx="20" cy="20" r="8" fill="none" stroke="var(--ink)" stroke-width="2.5"/>
-            </svg>
+            <img class="brand-logo" src="logo-mark.png" alt="" width="42" height="42" decoding="async">
             <div>
               <h1 class="brand-name">نيوكيم</h1>
               <div class="brand-sub"><span>دفتر العملاء</span><span class="latin">NewChem</span></div>
@@ -469,7 +478,7 @@ input[dir="ltr"]{text-align:right}
 <script>
 (function(){
 'use strict';
-var APP_VERSION='1.1';
+var APP_VERSION='1.2';
 var $ = function(s){ return document.querySelector(s); };
 var app = $('#app');
 var root = document.documentElement;
@@ -835,7 +844,7 @@ function renderDetail(force){
     S.sel=null;
     if(app.classList.contains('detail-open')) setOpen(false);
     if(lastD.empty && !force) return;
-    pane.innerHTML='<div class="detail-empty"><svg viewBox="0 0 40 40" aria-hidden="true"><polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="20" r="8" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>اختار عميل من القائمة عشان تشوف رقمه ولوكيشنه ومديونيته والمنتجات اللي بياخدها بأسعارها.</span></div>';
+    pane.innerHTML='<div class="detail-empty"><img src="logo-mark.png" alt="" width="76" height="76"><span>اختار عميل من القائمة عشان تشوف رقمه ولوكيشنه ومديونيته والمنتجات اللي بياخدها بأسعارها.</span></div>';
     lastD={empty:true}; return;
   }
   var raw=store.customers[c.id];
