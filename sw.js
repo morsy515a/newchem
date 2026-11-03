@@ -1,5 +1,5 @@
 /* نيوكيم — offline support. Serves the app from the device first, refreshes it in the background. */
-var VERSION = 'newchem-v3';
+var VERSION = 'newchem-v4';
 var SHELL = [
   './',
   './manifest.webmanifest',
@@ -14,7 +14,8 @@ var FONT_CSS = 'https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400
 self.addEventListener('install', function (event) {
   event.waitUntil((async function () {
     var cache = await caches.open(VERSION);
-    await cache.addAll(SHELL);
+    // 'reload' skips the browser's HTTP cache, so a new version never precaches a stale page
+    await cache.addAll(SHELL.map(function (u) { return new Request(u, { cache: 'reload' }); }));
     try {
       var res = await fetch(FONT_CSS, { mode: 'cors' });
       if (res.ok) {
@@ -51,7 +52,8 @@ self.addEventListener('fetch', function (event) {
     var cache = await caches.open(VERSION);
     var key = isPage ? './' : req;
     var hit = await cache.match(key, { ignoreSearch: isPage, ignoreVary: true });
-    var network = fetch(req).then(function (res) {
+    var fresh = isPage ? new Request(req.url, { cache: 'no-cache', credentials: 'same-origin' }) : req;
+    var network = fetch(fresh).then(function (res) {
       if (res && !res.redirected && (res.ok || res.type === 'opaque')) cache.put(key, res.clone()).catch(function () {});
       return res;
     }).catch(function () { return null; });
