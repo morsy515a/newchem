@@ -1,8 +1,9 @@
 /* نيوكيم — offline support. Serves the app from the device first, refreshes it in the background. */
-var VERSION = 'newchem-v6';
+var VERSION = 'newchem-v7';
 var SHELL = [
   './',
   './manifest.webmanifest',
+  './firebase-config.js',
   './icon-192.png',
   './icon-512.png',
   './icon-maskable-512.png',
@@ -18,6 +19,9 @@ var SHELL = [
   './items/crystalo-5-5-46.jpg',
   './items/power-cyto.jpg'
 ];
+// online sync library (loaded by the page only when the phone is linked to the company account)
+var FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
+var FB_FILES = ['firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-firestore-compat.js'].map(function (f) { return FB + f; });
 var FONT_CSS = 'https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap';
 
 self.addEventListener('install', function (event) {
@@ -36,6 +40,9 @@ self.addEventListener('install', function (event) {
         }));
       }
     } catch (e) { /* fonts are optional; the app falls back to system Arabic fonts */ }
+    await Promise.all(FB_FILES.map(function (u) {
+      return fetch(u, { mode: 'no-cors' }).then(function (r) { if (r.ok || r.type === 'opaque') return cache.put(u, r); }).catch(function () {});
+    }));
     await self.skipWaiting();
   })());
 });
@@ -54,9 +61,15 @@ self.addEventListener('fetch', function (event) {
   var url = new URL(req.url);
   var sameOrigin = url.origin === self.location.origin;
   var isFont = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
-  if (!sameOrigin && !isFont) return;
+  var isLib = url.href.indexOf(FB) === 0;
+  if (!sameOrigin && !isFont && !isLib) return;
 
   var isPage = req.mode === 'navigate';
+  if (isPage) {
+    // only the app's own page is served from the cache; anything else on the site loads normally
+    var scope = new URL(self.registration.scope).pathname;
+    if (url.pathname !== scope && url.pathname !== scope + 'index.html') return;
+  }
   event.respondWith((async function () {
     var cache = await caches.open(VERSION);
     var key = isPage ? './' : req;

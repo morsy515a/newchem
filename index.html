@@ -449,6 +449,16 @@ html.locked body{overflow:hidden}
 .lock-forgot{display:grid;gap:10px;padding:12px 14px;border-radius:var(--r);background:var(--debt-soft);color:var(--debt);font-size:14px;text-align:start;width:100%}
 .lock-forgot.info{background:var(--accent-soft);color:var(--ink)}
 @media (max-height:660px){.lock-logo{width:60px;height:60px}.pad{grid-template-columns:repeat(3,62px);gap:10px 20px}.key{width:62px;height:62px;font-size:24px}}
+.icon-btn.cloud{position:relative}
+.icon-btn.cloud{color:var(--brand)}
+.icon-btn.cloud svg.i{width:22px;height:22px}
+.icon-btn.cloud.wait{color:#B7791F}
+.icon-btn.cloud.bad{color:var(--debt);border-color:currentColor}
+#cloud-sec .f{display:grid;gap:6px}
+#cloud-sec .f input{height:46px}
+#cloud-sec .rep-row{grid-template-columns:minmax(0,1fr) auto}
+#cloud-sec .role-pick{display:grid;gap:12px;margin:2px 0 4px}
+#cloud-sec .ltr{direction:ltr;unicode-bidi:isolate;overflow-wrap:anywhere}
 .lk-row{display:flex;align-items:center;gap:10px;font-size:14.5px;cursor:pointer}
 .lk-row input{width:20px;height:20px;accent-color:var(--brand);flex:none}
 .m-sec select{height:42px;border:1px solid var(--line);border-radius:9px;background:var(--bg);padding-inline:10px;font:inherit;font-size:15px;color:var(--ink)}
@@ -472,6 +482,9 @@ html.locked body{overflow:hidden}
           </div>
           <div class="top-acts">
             <button type="button" class="btn primary" id="add-btn" data-act="new">+ عميل جديد</button>
+            <button type="button" class="icon-btn cloud ok" id="cloud-btn" data-act="cloud-status" aria-label="محفوظ أونلاين" hidden>
+              <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
+            </button>
             <button type="button" class="icon-btn" id="lock-btn" data-act="lock-now" aria-label="اقفل التطبيق" hidden>
               <svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
             </button>
@@ -674,10 +687,11 @@ html.locked body{overflow:hidden}
   </div>
 </div>
 
+<script src="firebase-config.js"></script>
 <script>
 (function(){
 'use strict';
-var APP_VERSION='1.4';
+var APP_VERSION='1.5';
 var $ = function(s){ return document.querySelector(s); };
 var app = $('#app');
 var root = document.documentElement;
@@ -781,7 +795,8 @@ try{ localStorage.setItem('newchem.t','1'); localStorage.removeItem('newchem.t')
 function load(){
   try{ var t=localStorage.getItem(KEY); if(t){ var o=JSON.parse(t); if(o && typeof o==='object'){ store.customers=o.customers&&typeof o.customers==='object'?o.customers:{}; store.items=o.items&&typeof o.items==='object'?o.items:{}; store.invoices=o.invoices&&typeof o.invoices==='object'?o.invoices:{}; store.meta=o.meta&&typeof o.meta==='object'?o.meta:{}; } } }catch(e){}
 }
-function save(){
+function save(){ var ok=saveLocal(); if(ok){ markDirty(); cloudPush(); } return ok; }
+function saveLocal(){
   try{ localStorage.setItem(KEY,JSON.stringify(store)); return true; }
   catch(e){ toast(storageOK?'مقدرتش أحفظ. مساحة التخزين على الموبايل ممكن تكون مليانة.':'المتصفح ده مانع الحفظ. افتح التطبيق من الشاشة الرئيسية أو من متصفح عادي.',true); return false; }
 }
@@ -921,7 +936,7 @@ function renderBanners(){
     else if(isAndroid||touch) msg='<span>عشان تنزّله: من قائمة المتصفح ⋮ اختار «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».</span><span class="note-acts">';
     if(msg) h+='<div class="note info">'+msg+'<button type="button" class="mini x" data-act="hide-install" aria-label="إخفاء">✕</button></span></div>';
   }
-  if(backupDue()){
+  if(!cloud.cid && backupDue()){
     var lb=store.meta.lastBackup;
     h+='<div class="note"><span>'+(lb?'آخر نسخة احتياطية '+agoTxt(lb)+'.':'لسه ماخدتش نسخة احتياطية من عملاءك.')+' البيانات محفوظة على الموبايل ده بس، فخد نسخة وابعتها لنفسك.</span><button type="button" class="mini" data-act="backup">خد نسخة</button></div>';
   }
@@ -1112,14 +1127,14 @@ function renderDetail(force){
 function renderMenu(){
   var real=S.list.filter(function(c){ return !c.example; }).length;
   var lb=store.meta.lastBackup;
-  var h='<section class="m-sec"><h3>النسخة الاحتياطية</h3>'+
-    '<p>عملاءك محفوظين على الموبايل ده بس ('+real+' عميل). خد نسخة احتياطية كل أسبوع وابعتها لنفسك على واتساب أو احفظها على جوجل درايف. لو غيّرت الموبايل، نزّل التطبيق على الجديد واسترجع منها.</p>'+
+  var h=(cloud.cfg?'<section class="m-sec" id="cloud-sec">'+(cloudHTML=cloudSecHTML())+'</section>':'')+'<section class="m-sec"><h3>النسخة الاحتياطية</h3>'+
+    (cloud.cid?'<p>عملاءك محفوظين أونلاين ('+real+' عميل). النسخة الاحتياطية زيادة أمان، وتقدر تبعتها لنفسك.</p>':'<p>عملاءك محفوظين على الموبايل ده بس ('+real+' عميل). خد نسخة احتياطية كل أسبوع وابعتها لنفسك على واتساب أو احفظها على جوجل درايف. لو غيّرت الموبايل، نزّل التطبيق على الجديد واسترجع منها.</p>')+
     '<p>آخر نسخة: <b>'+(lb?esc(fmtDate(lb))+' ('+agoTxt(lb)+')':'لسه ماخدتش نسخة')+'</b></p>'+
     '<div class="btns"><button type="button" class="btn primary" data-act="backup">'+IC.share+'خد نسخة احتياطية</button><button type="button" class="btn" data-act="pick-import">استرجع من نسخة</button></div>';
   if(S.importData){
     var n=S.importData.customers.length, curN=Object.keys(store.customers).length, ni=S.importData.invoices.length;
     h+='<div class="confirm neutral" role="alert"><span>النسخة دي فيها <b class="num">'+n+'</b> عميل'+(ni?' و<b class="num">'+ni+'</b> فاتورة':'')+'. عندك دلوقتي <b class="num">'+curN+'</b> عميل على الجهاز.</span>'+
-      '<span>«دمج» يضيف عملاء النسخة ويحدّث اللي موجود منهم. «استبدال» يمسح اللي على الجهاز ويحط النسخة مكانه.</span>'+
+      '<span>«دمج» يضيف عملاء النسخة ويحدّث اللي موجود منهم. «استبدال» يمسح اللي على الجهاز ويحط النسخة مكانه'+(cloud.cid?'، وهيمسح كمان البيانات الأونلاين لكل اللي داخلين على حساب الشركة':'')+'.</span>'+
       '<div class="confirm-btns"><button type="button" class="btn primary" data-act="import-merge">دمج</button><button type="button" class="btn danger" data-act="import-replace">استبدال الكل</button><button type="button" class="btn" data-act="import-cancel">إلغاء</button></div></div>';
   }
   var co=company(), coSet=store.meta.company||{};
@@ -1747,6 +1762,20 @@ document.addEventListener('click',function(ev){
       function(e){ toast(e&&e.name==='NotAllowedError'?'اتلغى تفعيل '+bioLabel():bioLabel()+' مش متاحة على الجهاز ده.',true); });
   }
   else if(act==='bio-off'){ delete lockCfg.cred; if(lockSave()){ renderMenu(); toast('اتوقّف الفتح '+bioWith()); } }
+  else if(act==='cl-new'||act==='cl-have'){ cloud.form=act==='cl-new'?'signup':'signin'; cloud.formErr=''; renderCloud(); var ce=$('#cl-email'); if(ce) ce.focus(); cloudInit().catch(function(){}); }
+  else if(act==='cl-cancel'){ cloud.form=null; cloud.formErr=''; renderCloud(); }
+  else if(act==='cl-signin'){ cloudSignIn(); }
+  else if(act==='cl-signup'){ cloudSignUp(); }
+  else if(act==='cl-reset'){ cloudReset(); }
+  else if(act==='cl-verified'){ cloud.formErr=''; cloudVerifyCheck(); }
+  else if(act==='cl-resend'){ cloudResend(); }
+  else if(act==='cl-create'){ cloudCreateCompany(); }
+  else if(act==='cl-out'){ cloud.confirmOut=true; renderCloud(); }
+  else if(act==='cl-out-no'){ cloud.confirmOut=false; renderCloud(); }
+  else if(act==='cl-out-yes'){ cloudSignOut(); renderMenu(); }
+  else if(act==='cl-rep-add'){ cloudMember(true,($('#cl-rep-email')||{}).value); }
+  else if(act==='cl-rep-del'){ cloudMember(false,el.dataset.email); }
+  else if(act==='cloud-status'){ openMenu(); var cs=$('#cloud-sec'); if(cs) cs.scrollIntoView({block:'start'}); }
   else if(act==='hide-install'){ try{ localStorage.setItem('newchem.installHidden','1'); }catch(e){} renderBanners(); }
   else if(act==='add-prod'){ readProdRows(); prodRows.push({name:'',price:'',unit:''}); renderProdRows(); var n=$('#pn-'+(prodRows.length-1)); if(n) n.focus(); }
   else if(act==='rm-prod'){ readProdRows(); prodRows.splice(+el.dataset.i,1); if(!prodRows.length) prodRows.push({name:'',price:'',unit:''}); renderProdRows(); }
@@ -1790,6 +1819,13 @@ document.addEventListener('change',function(e){
   if(id==='co-name') co.name=v; else if(id==='co-phone') co.phone=v; else co.address=v;
   store.meta.company=co; if(save()) toast('اتحفظت بيانات الفاتورة');
 });
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Enter'||!e.target||!/^cl-/.test(e.target.id||'')) return;
+  e.preventDefault();
+  if(e.target.id==='cl-rep-email') cloudMember(true,e.target.value);
+  else if(cloud.form==='signup') cloudSignUp(); else if(cloud.form==='signin') cloudSignIn();
+});
+document.addEventListener('change',function(e){ var id=e.target&&e.target.id; if(id==='cl-owner'||id==='cl-rep') cloud.formRole=id==='cl-rep'?'rep':'owner'; });
 $('#f-map').addEventListener('input',function(e){ var p=coordsFrom(e.target.value); if(p){ formLoc={lat:p.lat,lng:p.lng,acc:0,src:'link'}; renderFormLoc(); } });
 $('#q').addEventListener('input',function(e){ S.q=e.target.value; var rows=renderList(); renderStats(rows); renderDetail(false); });
 $('#q').addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); e.target.blur(); } });
@@ -1924,11 +1960,17 @@ function showForgot(step){
   el.innerHTML='<span>مفيش طريقة نرجّع بيها الرقم السري، لأن بياناتك متحفظة على الموبايل بس. الحل إنك تمسح بيانات نيوكيم من الجهاز ده وتبدأ من جديد، وبعدها ترجّع عملاءك من آخر نسخة احتياطية.</span><div class="confirm-btns"><button type="button" class="btn danger" data-k="wipe2">امسح البيانات</button><button type="button" class="btn" data-k="forgot-close">تراجع</button></div>';
 }
 function wipeAll(){
+  var wasCloud=!!cloudPref().cid;
+  if(cloud.cfg){
+    cloudDetach(); cloud.base=null; dirtySet(null); cloudPrefSet({});
+    if(cloud.auth) cloud.auth.signOut().catch(function(){});
+    cloud.cid=null; cloud.role=null; cloud.user=null; cloud.status='signedout'; renderCloudBadge();
+  }
   unlock();
   lockCfg={}; try{ localStorage.removeItem(LOCKKEY); }catch(e){}
   store={customers:{},items:{},invoices:{},meta:{seeded:true}}; seedCatalog(); save();
   S.sel=null; setOpen(false); refresh(); syncLockUI();
-  toast('اتمسحت بيانات نيوكيم. رجّع عملاءك من «استرجع من نسخة» في القائمة ☰.');
+  toast(wasCloud?'اتمسحت بيانات نيوكيم من الموبايل ده. ادخل على حساب الشركة من القائمة ☰ والعملاء هيرجعوا.':'اتمسحت بيانات نيوكيم. رجّع عملاءك من «استرجع من نسخة» في القائمة ☰.');
 }
 function lockMenuHTML(){
   var h='<section class="m-sec"><h3>قفل التطبيق</h3>';
@@ -2037,14 +2079,452 @@ document.addEventListener('visibilitychange',function(){
 });
 window.addEventListener('pageshow',function(e){ if(e.persisted && lockCfg.enabled){ lockNow(); maybeAutoBio(); } });
 
+/* ---------- online sync (Firebase): the phone's copy stays the working copy; every change goes up as a small patch ---------- */
+var FB_VER='10.12.2', CLOUDKEY='newchem.cloud', DIRTYKEY='newchem.dirty', SYNC_COLS=['customers','invoices','items'];
+var cloud={cfg:window.NEWCHEM_FIREBASE||null, ready:false, loading:null, auth:null, db:null, user:null, cid:null, role:null,
+  status:'off', err:'', unsub:[], synced:null, first:null, base:null, members:[],
+  form:null, formErr:'', formEmail:'', formRole:'owner', busy:false, confirmOut:false, pendingCreate:false, saving:false};
+var loadedScripts={};
+function cloudPref(){ try{ return JSON.parse(localStorage.getItem(CLOUDKEY)||'{}')||{}; }catch(e){ return {}; } }
+function cloudPrefSet(o){ try{ localStorage.setItem(CLOUDKEY,JSON.stringify(o)); }catch(e){} }
+function cleanJ(x){ return x===undefined?null:JSON.parse(JSON.stringify(x)); }
+/* key-order-independent JSON, so the same data always compares equal */
+function stab(x){
+  if(x===undefined||x===null||typeof x==='number'&&!isFinite(x)) return 'null';
+  if(typeof x!=='object') return JSON.stringify(x);
+  if(Array.isArray(x)) return '['+x.map(stab).join(',')+']';
+  return '{'+Object.keys(x).filter(function(k){ return x[k]!==undefined; }).sort().map(function(k){ return JSON.stringify(k)+':'+stab(x[k]); }).join(',')+'}';
+}
+function sharedMeta(){ var m=store.meta; return {invNo:+m.invNo||0, company:m.company||null, deletedItems:Array.isArray(m.deletedItems)?m.deletedItems:[], catalogV:+m.catalogV||0}; }
+function metaOf(d){ d=d||{}; return {invNo:+d.invNo||0, company:d.company||null, deletedItems:Array.isArray(d.deletedItems)?d.deletedItems:[], catalogV:+d.catalogV||0}; }
+function colMap(c){ var m={}, o=store[c]||{}; Object.keys(o).forEach(function(id){ if(!(c==='customers'&&o[id]&&o[id].example)) m[id]=stab(o[id]); }); return m; }
+function snapBase(){ var b={meta:stab(sharedMeta())}; SYNC_COLS.forEach(function(c){ b[c]=colMap(c); }); return b; }
+
+/* changes made while the phone is not attached (SDK still loading, no internet at start, signed out) are remembered
+   with the version they started from, and sent as patches once it attaches again */
+function dirtyGet(){ try{ return JSON.parse(localStorage.getItem(DIRTYKEY)||'null'); }catch(e){ return null; } }
+function dirtySet(d){ try{ if(d) localStorage.setItem(DIRTYKEY,JSON.stringify(d)); else localStorage.removeItem(DIRTYKEY); }catch(e){} }
+function allFirst(){ var f=cloud.first; return !!(f&&f.customers&&f.invoices&&f.items&&f.meta); }
+function markDirty(){
+  if(!cloud.base || cloud.synced && allFirst()) return;
+  var cid=cloudPref().cid; if(!cid) return;
+  var d=dirtyGet(); if(!d||d.cid!==cid) d={cid:cid};
+  var ch=false;
+  SYNC_COLS.forEach(function(c){
+    var b=cloud.base[c]||{}, now=colMap(c), dc=d[c]||(d[c]={});
+    Object.keys(now).concat(Object.keys(b)).forEach(function(id){
+      if(now[id]!==b[id] && !Object.prototype.hasOwnProperty.call(dc,id)){ dc[id]=b[id]===undefined?null:b[id]; ch=true; }
+    });
+  });
+  if(stab(sharedMeta())!==cloud.base.meta && !Object.prototype.hasOwnProperty.call(d,'meta')){ d.meta=cloud.base.meta; ch=true; }
+  if(ch) dirtySet(d);
+}
+
+function loadScript(src){
+  if(loadedScripts[src]) return Promise.resolve();
+  return new Promise(function(res,rej){
+    var s=document.createElement('script'); s.src=src; s.async=true;
+    s.onload=function(){ loadedScripts[src]=1; res(); };
+    s.onerror=function(){ s.remove(); rej(new Error('load')); };
+    document.head.appendChild(s);
+  });
+}
+function cloudInit(){
+  if(!cloud.cfg) return Promise.reject(new Error('nocfg'));
+  if(cloud.ready) return Promise.resolve();
+  if(cloud.loading) return cloud.loading;
+  var base='https://www.gstatic.com/firebasejs/'+FB_VER+'/';
+  cloud.loading=loadScript(base+'firebase-app-compat.js')
+    .then(function(){ return Promise.all([loadScript(base+'firebase-auth-compat.js'),loadScript(base+'firebase-firestore-compat.js')]); })
+    .then(function(){
+      if(!firebase.apps.length) firebase.initializeApp(cloud.cfg);
+      cloud.auth=firebase.auth(); cloud.db=firebase.firestore();
+      return cloud.db.enablePersistence({synchronizeTabs:true}).catch(function(){});
+    })
+    .then(function(){ cloud.ready=true; cloud.auth.onAuthStateChanged(onCloudUser); });
+  cloud.loading.catch(function(){ cloud.loading=null; });
+  return cloud.loading;
+}
+function cloudMsg(e){
+  var c=(e&&e.code)||'';
+  if(/network-request-failed|unavailable/.test(c)||navigator.onLine===false) return 'مفيش نت دلوقتي. اتأكد من الاتصال وجرّب تاني.';
+  if(/invalid-email/.test(c)) return 'الإيميل مكتوب غلط.';
+  if(/email-already-in-use/.test(c)) return 'الإيميل ده عليه حساب قبل كده. دوس «رجوع» وبعدين «عندي حساب» وادخل بيه.';
+  if(/weak-password/.test(c)) return 'كلمة السر لازم تكون 6 حروف أو أرقام على الأقل.';
+  if(/user-not-found|wrong-password|invalid-credential|invalid-login/.test(c)) return 'الإيميل أو كلمة السر غلط.';
+  if(/too-many-requests/.test(c)) return 'محاولات كتير. استنى شوية وجرّب تاني.';
+  if(/permission-denied/.test(c)) return 'الحساب ده مالوش صلاحية على بيانات الشركة. لو انت مندوب، اتأكد إن صاحب الشركة لسه مضيف إيميلك.';
+  return 'حصلت مشكلة في الاتصال. جرّب تاني بعد شوية.';
+}
+function setCloudStatus(s){ cloud.status=s; renderCloudBadge(); renderCloud(); }
+function onCloudUser(user){
+  cloud.user=user||null;
+  if(!user){ cloudDetach(); cloud.cid=null; cloud.role=null; setCloudStatus('signedout'); return; }
+  resolveCompany(false);
+}
+/* which company this login belongs to: its own (owner) or the one that lists its e-mail (rep) */
+function resolveCompany(force){
+  var u=cloud.user; if(!u) return;
+  var pref=cloudPref();
+  if(!force && pref.cid && pref.uid===u.uid && pref.role) return attach(pref.cid,pref.role,null);
+  var email=(u.email||'').toLowerCase(), own=cloud.db.collection('companies').doc(u.uid);
+  setCloudStatus('connecting');
+  return own.get().then(function(s){
+    if(s.exists) return attach(u.uid,'owner',s.data());
+    if(cloud.pendingCreate){
+      var data={owner:u.uid, name:company().name, members:[email], createdAt:Date.now()};
+      cloud.pendingCreate=false;
+      return own.set(data).then(function(){ return attach(u.uid,'owner',data); });
+    }
+    return u.reload().then(function(){
+      u=cloud.auth.currentUser||u; cloud.user=u;
+      if(!u.emailVerified){ setCloudStatus('verify'); return; }
+      return u.getIdToken(true).then(function(){
+        return cloud.db.collection('companies').where('members','array-contains',email).limit(1).get();
+      }).then(function(q){
+        if(!q||q.empty){ setCloudStatus('nocompany'); return; }
+        return attach(q.docs[0].id,'rep',q.docs[0].data());
+      });
+    });
+  }).catch(function(e){ cloud.pendingCreate=false; cloud.err=cloudMsg(e); setCloudStatus('error'); });
+}
+function attach(cid,role,data){
+  cloud.cid=cid; cloud.role=role; if(data&&data.members) cloud.members=data.members;
+  var pref=cloudPref(), base=cloud.db.collection('companies').doc(cid);
+  var first=pref.cid!==cid;
+  setCloudStatus(first?'uploading':'connecting');
+  return (first?uploadLocal(base):Promise.resolve()).then(function(){
+    pref={on:true, cid:cid, uid:cloud.user.uid, role:role}; cloudPrefSet(pref);
+    if(first) dirtySet(null);
+    listen(base);
+    if(first){ renderMenu(); toast(role==='owner'?'اتربط الموبايل ده بحساب الشركة، وبياناتك اترفعت أونلاين':'اتربطت بحساب الشركة، والعملاء نزلوا على موبايلك'); }
+  });
+}
+/* first time this phone joins the company: send up whatever it has that the company does not */
+function uploadLocal(base){
+  var ex=Object.keys(store.customers).filter(function(id){ return store.customers[id].example; });
+  if(ex.length){ ex.forEach(function(id){ purgeInvoices(id); delete store.customers[id]; }); store.meta.seeded=true; saveLocal(); refresh(); }
+  return Promise.all(SYNC_COLS.map(function(c){ return base.collection(c).get(); }).concat([base.collection('meta').doc('main').get()])).then(function(snaps){
+    var have={}, ops=[];
+    var rm=metaOf(snaps[3].exists?snaps[3].data():{}), lm=sharedMeta();
+    SYNC_COLS.forEach(function(c,i){ have[c]={}; snaps[i].forEach(function(d){ have[c][d.id]=1; }); });
+    cloud.base=snapBase();
+    SYNC_COLS.forEach(function(c){ Object.keys(store[c]).forEach(function(id){
+      if(have[c][id]) return;
+      if(c==='items' && rm.deletedItems.indexOf(id)>-1) return;
+      ops.push([c,id,store[c][id]]);
+    }); });
+    var meta={invNo:Math.max(rm.invNo,lm.invNo), company:rm.company||lm.company,
+      deletedItems:rm.deletedItems.concat(lm.deletedItems.filter(function(x){ return rm.deletedItems.indexOf(x)<0; })), catalogV:Math.max(rm.catalogV,lm.catalogV)};
+    var chain=Promise.resolve();
+    for(var i=0;i<ops.length;i+=400){
+      (function(chunk){ chain=chain.then(function(){ var b=cloud.db.batch(); chunk.forEach(function(o){ b.set(base.collection(o[0]).doc(o[1]),cleanJ(o[2])); }); return b.commit(); }); })(ops.slice(i,i+400));
+    }
+    return chain.then(function(){ return base.collection('meta').doc('main').set(cleanJ(meta),{merge:true}); });
+  });
+}
+function listen(base){
+  cloudDetach();
+  cloud.synced={meta:null}; cloud.first={};
+  SYNC_COLS.forEach(function(c){
+    cloud.unsub.push(base.collection(c).onSnapshot(function(snap){ onColSnap(c,snap); },onListenErr));
+  });
+  cloud.unsub.push(base.collection('meta').doc('main').onSnapshot(onMetaSnap,onListenErr));
+  cloud.unsub.push(base.onSnapshot(function(s){ if(s.exists){ cloud.members=s.data().members||[]; renderCloud(); } },function(){}));
+}
+function onColSnap(c,snap){
+  var cur=store[c]||{}, sm=cloud.synced[c]||{}, firstSnap=!cloud.first[c];
+  var take=function(id,data){ var js=stab(data); sm[id]=js; next[id]=cur[id]&&stab(cur[id])===js?cur[id]:data; };
+  var next;
+  if(firstSnap){
+    next={}; sm={};
+    snap.forEach(function(d){ take(d.id,d.data()); });
+    var dc=pendingLocal(c);
+    Object.keys(dc).forEach(function(id){
+      if(cur[id]) next[id]=cur[id]; else delete next[id];
+      if(dc[id]===null) delete sm[id]; else sm[id]=dc[id];
+    });
+    cloud.first[c]=true;
+  } else {
+    next=cur;
+    snap.docChanges().forEach(function(ch){
+      if(ch.type==='removed'){ delete next[ch.doc.id]; delete sm[ch.doc.id]; }
+      else take(ch.doc.id,ch.doc.data());
+    });
+  }
+  store[c]=next; cloud.synced[c]=sm;
+  afterSnap();
+}
+/* what this phone changed while it was not attached: saved list from earlier sessions + anything that differs from the last synced copy */
+function pendingLocal(c){
+  var d=dirtyGet(); if(d&&d.cid!==cloud.cid) d=null;
+  var out={}, saved=d&&d[c];
+  if(c==='meta'){
+    if(d&&Object.prototype.hasOwnProperty.call(d,'meta')) return {v:d.meta};
+    if(cloud.base&&stab(sharedMeta())!==cloud.base.meta) return {v:cloud.base.meta};
+    return null;
+  }
+  if(cloud.base){ var b=cloud.base[c]||{}, now=colMap(c);
+    Object.keys(now).concat(Object.keys(b)).forEach(function(id){ if(now[id]!==b[id]) out[id]=b[id]===undefined?null:b[id]; }); }
+  if(saved) Object.keys(saved).forEach(function(id){ out[id]=saved[id]; });
+  return out;
+}
+function onMetaSnap(s){
+  var rm=metaOf(s.exists?s.data():{}), firstSnap=!cloud.first.meta;
+  var pl=firstSnap?pendingLocal('meta'):null, keepLocal=!!pl;
+  store.meta.invNo=Math.max(+store.meta.invNo||0,rm.invNo);
+  store.meta.catalogV=Math.max(+store.meta.catalogV||0,rm.catalogV);
+  if(!keepLocal){
+    if(rm.company) store.meta.company=rm.company;
+    store.meta.deletedItems=rm.deletedItems;
+  }
+  /* the counters only ever move up: what this phone already shows counts as synced, so taking the bigger number is never sent back up */
+  var sv=metaOf(rm); sv.invNo=store.meta.invNo; sv.catalogV=store.meta.catalogV;
+  cloud.synced.meta=keepLocal&&pl.v?pl.v:stab(sv);
+  cloud.first.meta=true;
+  afterSnap();
+}
+function afterSnap(){
+  if(allFirst()){ cloudPush(); if(cloud.base){ cloud.base=null; dirtySet(null); } }
+  saveLocal(); scheduleRefresh();
+  if(cloud.status!=='synced'&&cloud.status!=='saving') setCloudStatus(cloud.saving?'saving':'synced');
+}
+function onListenErr(e){ cloud.err=cloudMsg(e); setCloudStatus('error'); }
+function cloudDetach(){
+  cloud.unsub.forEach(function(u){ try{ u(); }catch(e){} }); cloud.unsub=[];
+  if(cloud.synced && allFirst())
+    cloud.base={customers:cloud.synced.customers, invoices:cloud.synced.invoices, items:cloud.synced.items, meta:cloud.synced.meta};
+  cloud.synced=null; cloud.first=null;
+}
+var refreshT=null;
+function scheduleRefresh(){
+  clearTimeout(refreshT);
+  refreshT=setTimeout(function(){
+    refresh();
+    if(!$('#invv').hidden && VIEW && !store.invoices[VIEW]) closeInvoiceView();
+    if(!$('#items').hidden && !ITEM_EDIT) renderItems();
+  },150);
+}
+/* a customer's edit goes up field by field; payments and invoices add to the balance (increment) instead of overwriting it,
+   so two phones working on the same customer at the same time both count */
+function custPatch(prev,next,FV){
+  var p={}, keys={};
+  Object.keys(prev).forEach(function(k){ keys[k]=1; }); Object.keys(next).forEach(function(k){ keys[k]=1; });
+  Object.keys(keys).forEach(function(k){
+    if(k==='debt'||k==='history') return;
+    if(stab(prev[k])===stab(next[k])) return;
+    p[k]=next[k]===undefined?FV.delete():cleanJ(next[k]);
+  });
+  var ph=Array.isArray(prev.history)?prev.history:[], nh=Array.isArray(next.history)?next.history:[];
+  var seen={}; ph.forEach(function(h){ seen[stab(h)]=1; });
+  var added=nh.filter(function(h){ return !seen[stab(h)]; });
+  if(added.length) p.history=ph.length+added.length>120?cleanJ(nh):FV.arrayUnion.apply(FV,added.map(cleanJ));
+  var pd=+prev.debt||0, nd=+next.debt||0;
+  if(pd!==nd){
+    var absolute=!added.length||added.some(function(h){ return h.t==='set'||h.t==='open'; });
+    p.debt=absolute?nd:FV.increment(r2(nd-pd));
+  }
+  return p;
+}
+function metaPatch(pm,lm,FV){
+  var p={};
+  if(lm.invNo>pm.invNo) p.invNo=FV.increment(lm.invNo-pm.invNo);
+  if(stab(lm.company)!==stab(pm.company)) p.company=cleanJ(lm.company);
+  if(stab(lm.deletedItems)!==stab(pm.deletedItems)){
+    var removed=pm.deletedItems.some(function(x){ return lm.deletedItems.indexOf(x)<0; });
+    var add=lm.deletedItems.filter(function(x){ return pm.deletedItems.indexOf(x)<0; });
+    p.deletedItems=removed?cleanJ(lm.deletedItems):FV.arrayUnion.apply(FV,add);
+  }
+  if(lm.catalogV>pm.catalogV) p.catalogV=lm.catalogV;
+  return p;
+}
+function cloudPush(){
+  if(!cloud.cid||!cloud.synced||!cloud.ready) return;
+  var base=cloud.db.collection('companies').doc(cloud.cid), FV=firebase.firestore.FieldValue, n=0;
+  SYNC_COLS.forEach(function(c){
+    var prev=cloud.synced[c]; if(!cloud.first[c]||!prev) return;
+    var cur=store[c]||{};
+    Object.keys(cur).forEach(function(id){
+      var doc=cur[id]; if(!doc||c==='customers'&&doc.example) return;
+      var js=stab(doc); if(prev[id]===js) return;
+      var ref=base.collection(c).doc(id);
+      if(c==='customers'&&prev[id]){
+        var patch=custPatch(JSON.parse(prev[id]),doc,FV), full=cleanJ(doc);
+        if(Object.keys(patch).length) ref.update(patch).catch(function(e){ if(e&&e.code==='not-found') ref.set(full).catch(onWriteErr); else onWriteErr(e); });
+      } else ref.set(cleanJ(doc)).catch(onWriteErr);
+      prev[id]=js; n++;
+    });
+    Object.keys(prev).forEach(function(id){ if(!cur[id]){ base.collection(c).doc(id).delete().catch(onWriteErr); delete prev[id]; n++; } });
+  });
+  if(cloud.first.meta && cloud.synced.meta!==null){
+    var lm=sharedMeta(), mp=metaPatch(JSON.parse(cloud.synced.meta),lm,FV);
+    if(Object.keys(mp).length){ base.collection('meta').doc('main').set(mp,{merge:true}).catch(onWriteErr); cloud.synced.meta=stab(lm); n++; }
+  }
+  if(n) trackPending();
+}
+function onWriteErr(e){ cloud.err=cloudMsg(e); setCloudStatus('error'); }
+var pendingN=0;
+function trackPending(){
+  var my=++pendingN; cloud.saving=true; setCloudStatus('saving');
+  cloud.db.waitForPendingWrites().then(function(){
+    if(my!==pendingN) return;
+    cloud.saving=false; if(cloud.status==='saving') setCloudStatus('synced');
+  },function(){ if(my===pendingN) cloud.saving=false; });
+}
+function cloudRetry(){
+  if(!cloud.cfg) return;
+  if(!cloud.ready){ if(cloudPref().on) cloudInit().catch(cloudLoadFail); return; }
+  if(cloud.user&&(cloud.status==='error'||cloud.status==='connecting')) resolveCompany(true);
+}
+function cloudLoadFail(){ cloud.err='مقدرتش أوصل للحفظ الأونلاين دلوقتي. شغلك محفوظ على الموبايل، وهيترفع لوحده أول ما النت يرجع.'; setCloudStatus('error'); }
+window.addEventListener('online',function(){ cloudRetry(); renderCloudBadge(); renderCloud(); });
+window.addEventListener('offline',function(){ renderCloudBadge(); renderCloud(); });
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible' && cloud.user && cloud.status==='verify') resolveCompany(true);
+});
+
+/* sign in / sign up / reps */
+function cloudSignIn(){
+  var em=(($('#cl-email')||{}).value||'').trim(), pw=($('#cl-pass')||{}).value||'';
+  cloud.formEmail=em;
+  if(!em||!pw){ cloud.formErr='اكتب الإيميل وكلمة السر.'; renderCloud(); return; }
+  cloud.busy=true; cloud.formErr=''; renderCloud();
+  cloudInit().then(function(){ return cloud.auth.signInWithEmailAndPassword(em,pw); })
+    .then(function(){ cloud.busy=false; cloud.form=null; renderCloud(); },function(e){ cloud.busy=false; cloud.formErr=e&&e.message==='load'?'مقدرتش أوصل للإنترنت. جرّب تاني.':cloudMsg(e); renderCloud(); });
+}
+function cloudSignUp(){
+  var em=(($('#cl-email')||{}).value||'').trim(), pw=($('#cl-pass')||{}).value||'', pw2=($('#cl-pass2')||{}).value||'';
+  var role=($('#cl-rep')&&$('#cl-rep').checked)?'rep':'owner';
+  cloud.formEmail=em; cloud.formRole=role;
+  if(!em||!pw){ cloud.formErr='اكتب الإيميل وكلمة السر.'; renderCloud(); return; }
+  if(pw.length<6){ cloud.formErr='كلمة السر لازم تكون 6 حروف أو أرقام على الأقل.'; renderCloud(); return; }
+  if(pw!==pw2){ cloud.formErr='كلمتين السر مش زي بعض.'; renderCloud(); return; }
+  cloud.busy=true; cloud.formErr=''; renderCloud();
+  cloud.pendingCreate=role==='owner';
+  cloudInit().then(function(){ return cloud.auth.createUserWithEmailAndPassword(em,pw); })
+    .then(function(cred){
+      cloud.busy=false; cloud.form=null; renderCloud();
+      if(role==='rep') return cred.user.sendEmailVerification().catch(function(){});
+    },function(e){ cloud.busy=false; cloud.pendingCreate=false; cloud.formErr=e&&e.message==='load'?'مقدرتش أوصل للإنترنت. جرّب تاني.':cloudMsg(e); renderCloud(); });
+}
+function cloudReset(){
+  var em=(($('#cl-email')||{}).value||'').trim(); cloud.formEmail=em;
+  if(!em){ cloud.formErr='اكتب إيميلك الأول، وبعدين دوس «نسيت كلمة السر».'; renderCloud(); return; }
+  cloudInit().then(function(){ return cloud.auth.sendPasswordResetEmail(em); })
+    .then(function(){ cloud.formErr=''; renderCloud(); toast('لو الإيميل ده عليه حساب، هيوصله إيميل تغيّر منه كلمة السر'); },function(e){ cloud.formErr=cloudMsg(e); renderCloud(); });
+}
+function cloudSignOut(){
+  cloud.confirmOut=false; cloudDetach(); cloud.base=null; dirtySet(null);
+  cloudPrefSet({});
+  if(cloud.auth) cloud.auth.signOut().catch(function(){});
+  cloud.cid=null; cloud.role=null; cloud.user=null; cloud.members=[]; setCloudStatus('signedout');
+  toast('خرجت من حساب الشركة. البيانات فاضلة على الموبايل ده، بس من غير حفظ أونلاين.');
+}
+function cloudMember(add,email){
+  if(cloud.role!=='owner'||!cloud.cid) return;
+  email=String(email||'').trim().toLowerCase();
+  if(add && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ cloud.formErr='إيميل المندوب مكتوب غلط.'; renderCloud(); return; }
+  if(add && cloud.members.indexOf(email)>-1){ cloud.formErr='الإيميل ده مضاف قبل كده.'; renderCloud(); return; }
+  var FV=firebase.firestore.FieldValue, ref=cloud.db.collection('companies').doc(cloud.cid);
+  cloud.formErr='';
+  ref.update({members:add?FV.arrayUnion(email):FV.arrayRemove(email)}).then(function(){
+    toast(add?'اتضاف '+email+'. خلّيه ينزّل التطبيق ويعمل حساب بنفس الإيميل ويختار «أنا مندوب».':'اتشال '+email+' من المندوبين');
+  },function(e){ cloud.formErr=cloudMsg(e); renderCloud(); });
+  if(add&&$('#cl-rep-email')) $('#cl-rep-email').value='';
+}
+function cloudVerifyCheck(){
+  if(!cloud.user) return; cloud.busy=true; cloud.formErr=''; renderCloud();
+  Promise.resolve(resolveCompany(true)).then(function(){ cloud.busy=false; renderCloud(); },function(){ cloud.busy=false; renderCloud(); });
+}
+function cloudResend(){ if(cloud.user) cloud.user.sendEmailVerification().then(function(){ toast('بعتنا إيميل التأكيد تاني'); },function(e){ toast(cloudMsg(e),true); }); }
+function cloudCreateCompany(){ cloud.pendingCreate=true; resolveCompany(true); }
+
+/* UI: header badge + menu section */
+var CLOUD_IC={
+  ok:'<path d="M5 17.74A7 7 0 1 1 15.71 10h1.79a4.5 4.5 0 0 1 1.5 8.74"/><path d="m16 15-4.5 4.5L9 17"/>',
+  wait:'<path d="M4 14.9A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.24"/><path d="M12 13v8"/><path d="m8.5 16.5 3.5-3.5 3.5 3.5"/>',
+  bad:'<path d="m2 2 20 20"/><path d="M5.78 5.78A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.31-.19"/><path d="M21.53 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7 7 0 0 0 10 5.07"/>'
+};
+function renderCloudBadge(){
+  var b=$('#cloud-btn'); if(!b) return;
+  var st=cloud.status, off=navigator.onLine===false;
+  var out=st==='signedout'&&!!cloudPref().cid;
+  b.hidden=!cloud.cfg || !(cloud.cid || cloudPref().on && st!=='signedout' || out);
+  b.className='icon-btn cloud '+(st==='error'||out?'bad':(off||st==='saving'||st==='uploading'||st==='connecting')?'wait':'ok');
+  var kind=st==='error'||out?'bad':(off||st==='saving'||st==='uploading'||st==='connecting')?'wait':'ok';
+  if(b.dataset.kind!==kind){ b.dataset.kind=kind; b.querySelector('svg').innerHTML=CLOUD_IC[kind]; }
+  var t=out?'خرجت من حساب الشركة. ادخل تاني من القائمة':st==='error'?'مشكلة في الحفظ الأونلاين': off?'مفيش نت. التعديلات هتترفع لما النت يرجع': st==='saving'?'بيرفع التعديلات':'محفوظ أونلاين';
+  b.setAttribute('aria-label',t); b.title=t;
+}
+function cloudSecHTML(){
+  if(!cloud.cfg) return '';
+  var h='<h3>الحفظ الأونلاين والمندوبين</h3>', st=cloud.status, u=cloud.user, off=navigator.onLine===false;
+  var err=cloud.formErr?'<p class="f-err" role="alert">'+esc(cloud.formErr)+'</p>':'';
+  var out='<button type="button" class="btn danger-ghost" data-act="cl-out-yes">خروج</button>';
+  if(cloud.cid&&u){
+    var line=st==='error'?'<p class="f-err">'+esc(cloud.err)+'</p><div class="btns"><button type="button" class="btn primary" data-act="cl-verified">جرّب تاني</button></div>'
+      :'<p>'+(off?'مفيش نت دلوقتي. أي تعديل بتعمله محفوظ على الموبايل، وهيترفع لوحده أول ما النت يرجع.':st==='saving'?'بيرفع آخر التعديلات…':st==='uploading'?'بيرفع بيانات الموبايل ده…':'كل حاجة محفوظة أونلاين، وأي تعديل من أي موبايل بيظهر عند الكل.')+'</p>';
+    h+='<p class="m-ok">داخل بـ <bdi class="ltr">'+esc(u.email)+'</bdi> ('+(cloud.role==='owner'?'صاحب الشركة':'مندوب')+')</p>'+line;
+    if(cloud.role==='owner'){
+      var me=(u.email||'').toLowerCase(), reps=cloud.members.filter(function(m){ return m!==me; });
+      h+='<p><b>المندوبين</b></p>'+(reps.length?reps.map(function(m){ return '<div class="it-row rep-row"><bdi class="ltr">'+esc(m)+'</bdi><button type="button" class="mini" data-act="cl-rep-del" data-email="'+esc(m)+'">شيل</button></div>'; }).join('')
+        :'<p>ضيف إيميل كل مندوب هنا. هو بعد كده ينزّل التطبيق على موبايله ويعمل حساب بنفس الإيميل ويختار «أنا مندوب»، فيشوف نفس العملاء ويسجّل فواتير ودفعات.</p>')+
+        '<div class="locf"><input id="cl-rep-email" type="email" dir="ltr" inputmode="email" placeholder="إيميل المندوب" autocomplete="off" aria-label="إيميل المندوب"><button type="button" class="btn" data-act="cl-rep-add">ضيف</button></div>';
+    }
+    h+=err;
+    h+=cloud.confirmOut?'<div class="confirm" role="alert"><span>هتخرج من حساب الشركة على الموبايل ده. البيانات هتفضل عليه، بس مش هتتحفظ أونلاين لحد ما تدخل تاني.</span><div class="confirm-btns"><button type="button" class="btn danger" data-act="cl-out-yes">أيوه، اخرج</button><button type="button" class="btn" data-act="cl-out-no">تراجع</button></div></div>'
+      :'<div class="btns"><button type="button" class="btn danger-ghost" data-act="cl-out">خروج من الحساب</button></div>';
+    return h;
+  }
+  if(u&&st==='verify') return h+'<p>بعتنا إيميل تأكيد على <bdi class="ltr">'+esc(u.email)+'</bdi>. افتحه ودوس على اللينك اللي فيه، وبعدين ارجع هنا ودوس «أكّدت الإيميل». لو مش لاقيه، بص في الـ Spam.</p>'+err+
+    '<div class="btns"><button type="button" class="btn primary" data-act="cl-verified"'+(cloud.busy?' disabled':'')+'>'+(cloud.busy?'بيتأكد…':'أكّدت الإيميل')+'</button><button type="button" class="btn" data-act="cl-resend">ابعت الإيميل تاني</button>'+out+'</div>';
+  if(u&&st==='nocompany') return h+'<p>الإيميل <bdi class="ltr">'+esc(u.email)+'</bdi> مش مضاف لأي شركة لسه. اطلب من صاحب الشركة يضيفه عنده من القائمة ☰ في «المندوبين»، وبعدين دوس «جرّب تاني».</p>'+err+
+    '<div class="btns"><button type="button" class="btn primary" data-act="cl-verified"'+(cloud.busy?' disabled':'')+'>'+(cloud.busy?'بيدوّر…':'جرّب تاني')+'</button>'+out+'</div>'+
+    '<button type="button" class="lock-link" data-act="cl-create">أنا صاحب الشركة، اعمل حساب شركة جديد بالإيميل ده</button>';
+  if(!u&&st==='off'&&cloudPref().on) return h+'<p>بيتصل بحساب الشركة…</p>';
+  if(u&&(st==='connecting'||st==='uploading')) return h+'<p>'+(st==='uploading'?'بيرفع بيانات الموبايل ده لحساب الشركة…':'بيتصل بحساب الشركة…')+'</p>';
+  if(st==='error'&&(u||!cloud.ready)) return h+'<p class="f-err">'+esc(cloud.err)+'</p><div class="btns"><button type="button" class="btn primary" data-act="cl-verified">جرّب تاني</button>'+(u?out:'')+'</div>';
+  if(cloud.form){
+    var su=cloud.form==='signup', em=esc(cloud.formEmail||'');
+    h+=su?'<p>اعمل حساب بإيميلك وكلمة سر. الحساب ده هو اللي بتدخل بيه من أي موبايل.</p>'
+          +'<div class="role-pick"><label class="lk-row"><input type="radio" name="cl-role" id="cl-owner"'+(cloud.formRole!=='rep'?' checked':'')+'><span>أنا صاحب الشركة</span></label>'
+          +'<label class="lk-row"><input type="radio" name="cl-role" id="cl-rep"'+(cloud.formRole==='rep'?' checked':'')+'><span>أنا مندوب (صاحب الشركة ضاف إيميلي)</span></label></div>'
+         :'<p>ادخل بإيميل وكلمة سر حسابك.</p>';
+    h+='<label class="f"><span>الإيميل</span><input id="cl-email" type="email" dir="ltr" inputmode="email" value="'+em+'" autocomplete="username"></label>'+
+       '<label class="f"><span>كلمة السر'+(su?' (6 حروف أو أرقام على الأقل)':'')+'</span><input id="cl-pass" type="password" dir="ltr" autocomplete="'+(su?'new-password':'current-password')+'"></label>'+
+       (su?'<label class="f"><span>اكتب كلمة السر تاني</span><input id="cl-pass2" type="password" dir="ltr" autocomplete="new-password"></label>':'')+err+
+       '<div class="btns"><button type="button" class="btn primary" data-act="'+(su?'cl-signup':'cl-signin')+'"'+(cloud.busy?' disabled':'')+'>'+(cloud.busy?'استنى…':su?'اعمل الحساب':'دخول')+'</button><button type="button" class="btn" data-act="cl-cancel">رجوع</button></div>'+
+       (su?'':'<button type="button" class="lock-link" data-act="cl-reset">نسيت كلمة السر؟</button>');
+    return h;
+  }
+  if(cloudPref().cid) return h+'<p>الموبايل ده كان داخل على حساب الشركة وخرج منه. ادخل تاني عشان الحفظ الأونلاين يرجع، وأي حاجة اتعدلت هنا هتترفع.</p>'+
+    '<div class="btns"><button type="button" class="btn primary" data-act="cl-have">دخول</button></div>';
+  return h+'<p>دلوقتي بياناتك على الموبايل ده بس. لو عملت حساب، كل العملاء والفواتير هيتحفظوا أونلاين لوحدهم، وتفتحهم من أي موبايل، ومندوبينك يشتغلوا معاك على نفس الحسابات.</p>'+
+    '<div class="btns"><button type="button" class="btn primary" data-act="cl-new">اعمل حساب</button><button type="button" class="btn" data-act="cl-have">عندي حساب</button></div>';
+}
+/* re-drawn whenever the connection state changes, so whatever the person is typing must survive it */
+var cloudHTML='';
+function renderCloud(){
+  var sec=$('#cloud-sec'); if(!sec) return;
+  var html=cloudSecHTML(); if(html===cloudHTML && sec.innerHTML) return;
+  var keep={}, foc=document.activeElement&&sec.contains(document.activeElement)?document.activeElement.id:null;
+  [].forEach.call(sec.querySelectorAll('input[id]'),function(e){ keep[e.id]=e.type==='radio'?e.checked:e.value; });
+  cloudHTML=html; sec.innerHTML=html;
+  Object.keys(keep).forEach(function(id){ var e=$('#'+id); if(!e) return; if(e.type==='radio') e.checked=keep[id]; else if(keep[id]) e.value=keep[id]; });
+  if(foc&&$('#'+foc)) $('#'+foc).focus({preventScroll:true});
+}
+
 /* ---------- start ---------- */
 load();
+if(cloud.cfg && cloudPref().on && cloudPref().cid) cloud.base=snapBase();
 if(!store.meta.seeded){ seedExamples(); store.meta.seeded=true; store.meta.firstRun=Date.now(); save(); }
 if(seedCatalog()) save();
 lockLoad();
 if(lockCfg.enabled && canLock){ lockNow(); maybeAutoBio(); } else root.classList.remove('locked');
 syncLockUI();
 refresh();
+if(cloud.cfg && cloudPref().on) cloudInit().catch(cloudLoadFail);
+renderCloudBadge();
 if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
   var hadCtrl=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange',function(){ if(hadCtrl){ S.updateReady=true; renderBanners(); } hadCtrl=true; });
