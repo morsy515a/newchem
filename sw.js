@@ -1,5 +1,5 @@
 /* نيوكيم — offline support. Serves the app from the device first, refreshes it in the background. */
-var VERSION = 'newchem-v10';
+var VERSION = 'newchem-v11';
 var SHELL = [
   './',
   './manifest.webmanifest',
@@ -63,6 +63,8 @@ self.addEventListener('fetch', function (event) {
   var isFont = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
   var isLib = url.href.indexOf(FB) === 0;
   if (!sameOrigin && !isFont && !isLib) return;
+  // the Android app file and its download page always come straight from the site
+  if (sameOrigin && /\.apk$|\/download\.html$/.test(url.pathname)) return;
 
   var isPage = req.mode === 'navigate';
   if (isPage) {

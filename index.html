@@ -68,7 +68,11 @@
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:15px;line-height:1.55;-webkit-tap-highlight-color:transparent;touch-action:manipulation;overscroll-behavior-y:none}
-html{background:var(--bg)}
+html{background:var(--bg);overscroll-behavior-y:none}
+/* feel like an installed app: no text selection, drag or long-press menus outside text fields */
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,select,[contenteditable="true"],.notes{-webkit-user-select:text;user-select:text}
+img{-webkit-user-drag:none}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
 html.lock-s body{overflow:hidden}
 [hidden]{display:none!important}
@@ -936,7 +940,7 @@ details.day-img .stmt-img,details.day-img .stmt-wait{margin-top:8px}
 <script>
 (function(){
 'use strict';
-var APP_VERSION='1.8';
+var APP_VERSION='1.9';
 var $ = function(s){ return document.querySelector(s); };
 var app = $('#app');
 var root = document.documentElement;
@@ -1431,14 +1435,16 @@ function renderMenu(){
     '<label class="f"><span>اسم الشركة</span><input id="co-name" value="'+esc(coSet.name||'')+'" placeholder="'+esc(co.name)+'" autocomplete="organization"></label>'+
     '<label class="f"><span>رقم التليفون</span><input id="co-phone" type="tel" inputmode="tel" dir="ltr" value="'+esc(coSet.phone||'')+'" placeholder="'+esc(co.phone)+'" autocomplete="off"></label>'+
     '<label class="f"><span>العنوان</span><input id="co-addr" value="'+esc(coSet.address||'')+'" placeholder="'+esc(co.address)+'" autocomplete="off"></label>'+
-    '</section>'+lockMenuHTML()+'<section class="m-sec"><h3>تنزيل التطبيق على الموبايل</h3>';
-  if(isStandalone()) h+='<p class="m-ok">التطبيق متنزّل على جهازك وشغال من الشاشة الرئيسية.</p>';
-  else {
-    if(installEvt) h+='<div class="btns"><button type="button" class="btn primary" data-act="install">تثبيت نيوكيم على الجهاز</button></div>';
-    h+='<p><b>آيفون:</b></p><ol class="m-steps"><li>افتح اللينك في Safari.</li><li>اضغط زر المشاركة '+IC.share+'.</li><li>اختار «إضافة إلى الشاشة الرئيسية» وبعدين «إضافة».</li></ol>'+
-       '<p><b>أندرويد:</b></p><ol class="m-steps"><li>افتح اللينك في Chrome.</li><li>اضغط القائمة ⋮ فوق.</li><li>اختار «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».</li></ol>';
-  }
-  h+='<p>بعد التنزيل افتح نيوكيم من أيقونته على الشاشة الرئيسية. بيشتغل حتى من غير نت.</p></section>'+
+    '</section>'+lockMenuHTML()+'<section class="m-sec"><h3>تطبيق نيوكيم على الموبايل</h3>';
+  var andr=/Android/i.test(navigator.userAgent);
+  if(isStandalone()) h+='<p class="m-ok">التطبيق متنزّل على جهازك.</p>';
+  else if(installEvt&&!andr) h+='<div class="btns"><button type="button" class="btn primary" data-act="install">تثبيت نيوكيم على الجهاز</button></div>';
+  h+='<p><b>أندرويد:</b> نزّل التطبيق وسطّبه زي أي تطبيق، وهيظهر في قايمة التطبيقات باسم نيوكيم.</p>'+
+     '<div class="btns"><a class="btn'+(andr&&!isStandalone()?' primary':'')+'" href="newchem.apk" download="newchem.apk">نزّل تطبيق أندرويد</a></div>'+
+     '<p><b>آيفون:</b></p><ol class="m-steps"><li>افتح اللينك في Safari.</li><li>اضغط زر المشاركة '+IC.share+'.</li><li>اختار «إضافة إلى الشاشة الرئيسية» وبعدين «إضافة».</li></ol>'+
+     '<p>عشان مندوب أو حد تاني ينزّل التطبيق على موبايله، ابعتله صفحة التحميل:</p>'+
+     '<div class="btns"><button type="button" class="btn" data-act="share-dl">'+IC.share+'ابعت لينك التحميل</button></div>';
+  h+='<p>التطبيق بيشتغل حتى من غير نت.</p></section>'+
      '<p class="m-ver">نيوكيم · إصدار '+APP_VERSION+'</p>';
   $('#menu-body').innerHTML=h;
 }
@@ -3038,6 +3044,9 @@ document.addEventListener('click',function(ev){
   else if(act==='import-replace'){ applyImport('replace'); }
   else if(act==='import-cancel'){ S.importData=null; renderMenu(); }
   else if(act==='install'){ doInstall(); }
+  else if(act==='share-dl'){ var dl=new URL('download.html',location.href).href;
+    if(navigator.share) navigator.share({title:'تطبيق نيوكيم',text:'نزّل تطبيق نيوكيم من اللينك ده:',url:dl}).catch(function(){});
+    else { try{ navigator.clipboard.writeText(dl).then(function(){ toast('اتنسخ لينك التحميل'); },function(){ toast(dl); }); }catch(e){ toast(dl); } } }
   else if(act==='here'){ var hc=cur(); if(hc&&hasCoords(hc)){ S.confirmHere=hc.id; renderDetail(true); } else saveHere(); }
   else if(act==='here-yes'){ saveHere(); }
   else if(act==='here-no'){ S.confirmHere=null; renderDetail(true); }
@@ -3182,6 +3191,7 @@ $('#inv-lines').addEventListener('input',function(e){
 });
 $('#inv-paid').addEventListener('input',invTotals);
 $('#plan-body').addEventListener('change',function(e){ var id=e.target&&e.target.dataset&&e.target.dataset.pk; if(!id) return; var p=planLive(); var on=p.ids.indexOf(id)>-1; if(on!==e.target.checked) planToggle(id); var btn=$('#plan-body [data-act="pk-done"]'); var n=planGet().ids.length; if(btn) btn.textContent=n?'تمام، اعرض الخطة ('+n+')':'رجوع'; });
+document.addEventListener('contextmenu',function(e){ var t=e.target; if(t&&t.closest&&t.closest('input,textarea,[contenteditable="true"],.notes')) return; e.preventDefault(); });
 $('#day-body').addEventListener('change',function(e){
   var t=e.target;
   if(t.id==='day-date'){ var v=t.value; if(/^\d{4}-\d{2}-\d{2}$/.test(v)&&v<=todayKey()&&v!==DAY.k){ DAY.k=v; renderDay(); } else if(v!==DAY.k) t.value=DAY.k; }
