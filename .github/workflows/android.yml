@@ -1,5 +1,5 @@
 # Builds the NewChem Android app (a Trusted Web Activity around https://morsy515a.github.io/newchem/).
-# The APK comes out unsigned; it is signed outside GitHub with the company's private key,
+# The APK comes out unsigned (pushed to the 'android-build' branch); it is signed outside GitHub with the company's private key,
 # whose fingerprint is published in https://morsy515a.github.io/.well-known/assetlinks.json
 name: Android app
 
@@ -17,7 +17,7 @@ on:
     paths: ['.github/workflows/android.yml']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -29,9 +29,9 @@ jobs:
       VCODE: ${{ github.event.inputs.version_code || '1' }}
       VNAME: ${{ github.event.inputs.version_name || '1.0' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -225,8 +225,14 @@ jobs:
           $BT/zipalign -c -v 4 out/newchem-unsigned.apk | tail -3 || true
           $BT/aapt2 dump badging out/newchem-unsigned.apk | head -5 || true
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: newchem-android
-          path: out/
-          retention-days: 7
+      # the unsigned APK goes to the 'android-build' branch, where the signing step picks it up
+      - name: Hand over for signing
+        working-directory: out
+        run: |
+          git init -q -b android-build
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          echo "Unsigned NewChem Android build ${{ github.run_number }} (version $VNAME / $VCODE) from ${{ github.sha }}" > BUILD.txt
+          git add -A
+          git commit -qm "Unsigned Android build ${{ github.run_number }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" android-build
